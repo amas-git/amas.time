@@ -1,5 +1,8 @@
 isPrime :: Integral a => a -> Bool
-isPrime n = null [ x | x <- [2..(floor $ sqrt(fromIntegral $ n))], n > 3, (n `mod` x) == 0 ]
+isPrime 1 = False
+isPrime 2 = True
+isPrime 3 = True
+isPrime n = null [ x | x <- [2..(floor $ sqrt(fromIntegral $ n))], (n `mod` x) == 0 ]
 
 main :: IO ()
 main = do
