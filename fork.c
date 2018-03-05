@@ -8,5 +8,6 @@ int main(char ** argv) {
     } else {
         printf("2> PID : %5d PARENT : %5d\n", getpid(), getppid());
     }
+    sleep(200000);
     return 0;
 }
