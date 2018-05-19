@@ -1,0 +1,8 @@
+{
+  "name": "nodeplay",
+  "version": "1.0.0",
+  "description": "a playground for nodejs",
+  "main": "index.js",
+  "author": "amas",
+  "license": "MIT"
+}
