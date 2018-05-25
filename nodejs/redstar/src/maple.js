@@ -14,6 +14,13 @@ function error(text) {
     console.error(text);
 }
 
+const Maple = {
+    name: "",
+    content: [],
+    params: [],
+    result: ""
+}
+
 function maple(file) {
     const maple = {
         filename: '',
@@ -21,19 +28,21 @@ function maple(file) {
         lines: 0,
         length: 0,
         handler: {},
-        queue:[
-            {
-                handler: "@e",
-                params: [],
-                content: [],
-                result: null    
-            }
-        ],
+        queue: [],
         config: {
-            editer: "vim",
+            editor: "vim",
             trace: true
         },
-        trace: []
+        trace: [],
+
+        push : (name, params) => {
+            let m    = Object.create(Maple);
+            m.name   = name;
+            m.params = params;
+            maple.queue.push(m);
+
+            return maple.queue.length > 1 ? maple.queue[maple.queue.length-2] : null;
+        }
     };
 
     maple.handler["@e"]=(content)=>{
@@ -42,8 +51,12 @@ function maple(file) {
 
     maple.handler["@echo"]=(content)=>{
         return content.join('\n');
-    }
+    };
 
+    maple.handler["@js"]=(content)=>{
+        eval(content.join('\n'));
+        return null;
+    };
 
     maple.filename = file;
 
@@ -54,16 +67,20 @@ function maple(file) {
         maple.length+=line.length;
 
 
+
         let match = null;
         if(match = REGEX_SECTION.exec(line)) {
-            //console.log(match[1]);
             let handler = match[1];
             if(handler && maple.handler[handler]) {
-                let result = maple.handler[handler](maple.content);
-                if(maple.config.trace) {
-                    console.log(handler + " <- " + maple.content.join('\n'));
+
+                let m = maple.push(handler, []);
+                if (m != null) {
+                    m.content = maple.content;
+                    m.result = maple.handler[m.name](maple.content);
+                    if(m.result) {
+                        console.log(m.result);
+                    }
                 }
-                console.log(result);
                 maple.content=[];
             } else {
                 error("NOT FOUND HANDLER: " + handler);
@@ -74,6 +91,7 @@ function maple(file) {
 
     }).on('close',() => {
         //console.log(maple);
+        //console.log(JSON.stringify(maple.queue,null,2));
     });
 
 
@@ -83,6 +101,6 @@ function maple(file) {
 
 
 
-// console.log(process.env);
+//console.log(process.env);
 console.log(process.cwd());
 maple("maple/hello.mp");
