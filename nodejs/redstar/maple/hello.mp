@@ -7,9 +7,17 @@ people={
         { name: "c", age : 12},
         { name: "d", age : 99},
         { name: "e", age : 10},
+    ],
+
+    keys: [
+            { name: "aa", age : 11},
+            { name: "bb", age : 11},
+            { name: "cc", age : 12},
+            { name: "dd", age : 99},
+            { name: "ee", age : 10},
     ]
 }
-#-------------------------------------------------| @e people.data
+#-------------------------------------------------| @e people.data people.keys
 This is good ${$.name} is ${$.age}
 #-------------------------------------------------| @echo n
 Hello this is ${people.name}!

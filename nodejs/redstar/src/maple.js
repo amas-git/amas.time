@@ -62,7 +62,11 @@ function maple(file) {
             m.params = params;
             maple.queue.push(m);
 
-            return maple.queue.length > 1 ? maple.queue[maple.queue.length-2] : null;
+            let c = maple.queue.length > 1 ? maple.queue[maple.queue.length-2] : null;
+            if(c) {
+                c.content = maple.content;
+                maple.content=[];
+            }
         },
 
         end() {
@@ -75,15 +79,22 @@ function maple(file) {
         eval() {
           for(let m of maple.queue) {
               m.result = maple.handler[m.name](m.content, m.params);
+              console.error(m.result);
           }
         }
     };
 
     maple.handler["@e"]=(content, params)=>{
+        let rs = [];
         for(let p of params) {
-            _info(p + " " + global[p]);
+            eval(`var $$ = ${p};`);
+            if(isIterable($$)) {
+                for($ of $$) {
+                    rs.push(eval('`'+content.join('\n').replace(/`/g,'\\`')+'`'));
+                }
+            }
         }
-        return eval('`'+content.join('\n').replace(/`/g,'\\`')+'`');
+        return rs.join("\n");
     };
 
     maple.handler["@echo"]=(content, params)=>{
@@ -112,7 +123,6 @@ function maple(file) {
             let handler = match[1];
             if(handler && maple.handler[handler]) {
                 maple.push(handler, match[2]);
-                maple.content=[];
             } else {
                 error("NOT FOUND HANDLER: " + handler);
             }
@@ -125,9 +135,6 @@ function maple(file) {
         maple.eval(maple);
     });
 }
-
-var a = 1;/
-console.log(this['a']);
 //console.log(process.env);
 console.log(process.cwd());
 maple("maple/hello.mp");
