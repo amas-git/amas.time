@@ -17,8 +17,29 @@ function error(text) {
 const Maple = {
     name: "",
     content: [],
-    params: [],
-    result: ""
+    result: "",
+    set params(text) {
+        this.__params = text.trim().split(/\s+/);
+    },
+    get params(){
+        return this.__params;
+    }
+}
+
+function isIterable(o) {
+    return o == null ? false : typeof o[Symbol.iterator] === 'function';
+}
+
+const LOG_TAG = ['maple','info'];
+
+function _(tag, text) {
+    if(LOG_TAG.includes(tag)) {
+        console.log(`[${tag}] : ${text}`);
+    }
+}
+
+function _info(text) {
+    _('info', text);
 }
 
 function maple(file) {
@@ -35,28 +56,48 @@ function maple(file) {
         },
         trace: [],
 
-        push : (name, params) => {
+        push(name, params) {
             let m    = Object.create(Maple);
             m.name   = name;
             m.params = params;
             maple.queue.push(m);
 
             return maple.queue.length > 1 ? maple.queue[maple.queue.length-2] : null;
+        },
+
+        end() {
+            if(maple.content && maple.queue.length > 0) {
+                maple.queue[maple.queue.length-1].content = maple.content;
+                maple.content = [];
+            }
+        },
+
+        eval() {
+          for(let m of maple.queue) {
+              m.result = maple.handler[m.name](m.content, m.params);
+          }
         }
     };
 
-    maple.handler["@e"]=(content)=>{
+    maple.handler["@e"]=(content, params)=>{
+        for(let p of params) {
+            _info(p + " " + global[p]);
+        }
         return eval('`'+content.join('\n').replace(/`/g,'\\`')+'`');
     };
 
-    maple.handler["@echo"]=(content)=>{
+    maple.handler["@echo"]=(content, params)=>{
         return content.join('\n');
     };
 
-    maple.handler["@js"]=(content)=>{
+    maple.handler["@js"]=(content, params)=>{
         eval(content.join('\n'));
         return null;
     };
+
+    maple.handler["@select"]=(content, params) => {
+
+    }
 
     maple.filename = file;
 
@@ -66,21 +107,11 @@ function maple(file) {
         maple.lines +=1;
         maple.length+=line.length;
 
-
-
         let match = null;
         if(match = REGEX_SECTION.exec(line)) {
             let handler = match[1];
             if(handler && maple.handler[handler]) {
-
-                let m = maple.push(handler, []);
-                if (m != null) {
-                    m.content = maple.content;
-                    m.result = maple.handler[m.name](maple.content);
-                    if(m.result) {
-                        console.log(m.result);
-                    }
-                }
+                maple.push(handler, match[2]);
                 maple.content=[];
             } else {
                 error("NOT FOUND HANDLER: " + handler);
@@ -90,17 +121,13 @@ function maple(file) {
         }
 
     }).on('close',() => {
-        //console.log(maple);
-        //console.log(JSON.stringify(maple.queue,null,2));
+        maple.end();
+        maple.eval(maple);
     });
-
-
-   // console.log(maple.handler["@echo"]("this is boob"));
 }
 
-
-
-
+var a = 1;/
+console.log(this['a']);
 //console.log(process.env);
 console.log(process.cwd());
 maple("maple/hello.mp");
