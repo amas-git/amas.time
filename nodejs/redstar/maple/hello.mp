@@ -1,27 +1,53 @@
 #-------------------------------------------------| @json
+#-------------------------------------------------| @src
+number: 128,
+data: [
+    { name: "a", age : 11},
+    { name: "b", age : 11},
+    { name: "c", age : 12},
+    { name: "d", age : 99},
+    { name: "e", age : 10},
+],
 
-#-------------------------------------------------| @js
-people={
-    number: 1,
-    data: [
-        { name: "a", age : 11},
-        { name: "b", age : 11},
-        { name: "c", age : 12},
-        { name: "d", age : 99},
-        { name: "e", age : 10},
-    ],
+keys: [
+    { name: "aa", age : 11},
+    { name: "bb", age : 11},
+    { name: "cc", age : 12},
+    { name: "dd", age : 99},
+    { name: "ee", age : 10},
+],
 
-    keys: [
-            { name: "aa", age : 11},
-            { name: "bb", age : 11},
-            { name: "cc", age : 12},
-            { name: "dd", age : 99},
-            { name: "ee", age : 10},
-    ]
-}
-#-------------------------------------------------| @echo
-==================================================================================| strings.json
-#-------------------------------------------------| @e people.data people.keys
-This is good ${$.name} is ${$.age}
+com: [
+    {
+        team: "a",
+        people: [
+            {name:"a", age:1},
+            {name:"b", age:2},
+            {name:"c", age:3}
+        ]
+    },
+    {
+        team: "B",
+        people: [
+            {name:"B1", age:11},
+            {name:"B2", age:22},
+            {name:"B3", age:33}
+        ]
+    }
+],
+
+id: [1,2,3,4,5,[3,3,3]]
+#-------------------------------------------------| @e
+This is good ${number} ${id}
+#-------------------------------------------------| @select keys
+${name}'s age is ${age}!
+#-------------------------------------------------| @select com
+We have team: '${team}' to success!!!
+#-------------------------------------------------| @select com[0].people
+${name} age of ${age}
 #-------------------------------------------------| @echo n
 Hello this is ${people.name}!
+#-------------------------------------------------| @match /**
+The root number is : ${ID}
+#-------------------------------------------------| @echo
+Hello World!

@@ -1,17 +1,19 @@
-const REGEX_SECTION = /^#[-]{4,256}\|\s(@[a-z_A-Z]*)(.*)$/;
+const minimatch = require("minimatch")
 
+const REGEX_SECTION = /^#[-]{4,256}\|\s(@[a-z_A-Z]*)(.*)$/;
+'use strict'
 /**
  * TODO:
  *  1. 用array.some()改写正则匹配部分
  *
  * @param text
  */
-// function e(template) {
-//     return eval('`'+template.replace(/`/g,'\\`')+'`');
-// }
-
 function error(text) {
     console.error(text);
+}
+
+function E(template) {
+    return eval('`' + template.replace(/`/g, '\\`') + '`');
 }
 
 const Maple = {
@@ -38,18 +40,33 @@ function _(tag, text) {
     }
 }
 
-function _info(text) {
-    _('info', text);
+function evalInContext(o, content) {
+    if(Array.isArray(o)) {
+        return E(content);
+    }
+
+    let ret = eval(`let {${Object.keys(o)}} = o;`
+        + '`'+content.join('\n').replace(/`/g,'\\`')+'`'
+    );
+    return ret;
+}
+
+function destructure_expr(o) {
+    const keys = Object.keys(o);
 }
 
 function maple(file) {
     const maple = {
+        src: {
+          main:{}
+        },
         filename: '',
         content: [],
         lines: 0,
         length: 0,
         handler: {},
         queue: [],
+        match: [],
         config: {
             editor: "vim",
             trace: true
@@ -61,6 +78,11 @@ function maple(file) {
             m.name   = name;
             m.params = params;
             maple.queue.push(m);
+
+            // 如果是matcher, 假如到match集合中
+            if('@match' === m.name) {
+                maple.match.push(m);
+            }
 
             let c = maple.queue.length > 1 ? maple.queue[maple.queue.length-2] : null;
             if(c) {
@@ -75,40 +97,80 @@ function maple(file) {
                 maple.content = [];
             }
         },
+        run_matcher() {
+            if(maple.match.length === 0) {
+                return;
+            }
 
+            walk(maple.src.main, (CONTEXT, NAME, VALUE) => {
+                maple.match.forEach((m) => {
+                    if(!m.params[0]){
+                        return;
+                    }
+                    let ID = CONTEXT.path.join('/');
+                    if(minimatch(ID, m.params[0])) {
+
+                        m.result += eval('`' + m.content.join('\n').replace(/`/g, '\\`') + '`') + '\n';
+                    }
+                })
+            });
+        },
         eval() {
-          for(let m of maple.queue) {
-              m.result = maple.handler[m.name](m.content, m.params);
-              console.error(m.result);
-          }
-        }
-    };
+            // 调用处理器
+            for (let m of maple.queue) {
+                if(['@match','@walk'].includes(m.name)) {
+                    continue;
+                }
 
-    maple.handler["@e"]=(content, params)=>{
-        let rs = [];
-        for(let p of params) {
-            eval(`var $$ = ${p};`);
-            if(isIterable($$)) {
-                for($ of $$) {
-                    rs.push(eval('`'+content.join('\n').replace(/`/g,'\\`')+'`'));
+                m.result = maple.handler[m.name](m, m.content, m.params);
+            }
+        },
+        print() {
+            for (let m of maple.queue) {
+                if(m.result) {
+                    console.error(m.result);
                 }
             }
         }
-        return rs.join("\n");
+
     };
 
-    maple.handler["@echo"]=(content, params)=>{
+    maple.handler["@e"]=(maper, content, params)=>{
+        return evalInContext(maple.src.main, content);
+    };
+
+    maple.handler["@select"]=(maper, content, params)=>{
+        let rs = [];
+        for(let p of params) {
+            eval(`var $$ = maple.src.main.${p};`);
+            if(isIterable($$)) {
+                for($ of $$) {
+                    rs.push(evalInContext($, content));
+                }
+            }
+        }
+        return rs.join('\n');
+    };
+
+    maple.handler["@echo"]=(maper, content, params)=>{
         return content.join('\n');
     };
 
-    maple.handler["@js"]=(content, params)=>{
+    maple.handler["@js"]=(maper, content, params)=>{
         eval(content.join('\n'));
         return null;
     };
 
-    maple.handler["@select"]=(content, params) => {
+    maple.handler["@src"]=(maper, content, params)=>{
+        eval(`maple.src.main={${content.join('\n')}}; $$=maple.src.main;`);
+        return null;
+    };
 
-    }
+    maple.handler["@match"]=(maper, content, params) => {
+        maple.match.push(maper);
+        return null;
+    };
+
 
     maple.filename = file;
 
@@ -120,7 +182,7 @@ function maple(file) {
 
         let match = null;
         if(match = REGEX_SECTION.exec(line)) {
-            let handler = match[1];
+            let handler = match[1].trim();
             if(handler && maple.handler[handler]) {
                 maple.push(handler, match[2]);
             } else {
@@ -132,9 +194,44 @@ function maple(file) {
 
     }).on('close',() => {
         maple.end();
-        maple.eval(maple);
+        maple.eval();
+        maple.run_matcher();
+        maple.print();
     });
 }
-//console.log(process.env);
-console.log(process.cwd());
+
+
+function walk(o,f) {
+    _walk(null, o, f);
+}
+
+
+/**
+ * 遍历指定的objects
+ * @param context
+ * @param o
+ * @param f
+ */
+function _walk(context, o, f) {
+    if(context == null) {
+        context = {
+            path: [''],
+            type: (typeof o)
+        }
+    }
+
+    if((o === null) || Object.keys(o).length === 0 || (typeof o === 'string') || (typeof o === 'number')) {
+        return;
+    }
+
+    for(let k in o) {
+        let ctx = {path: [...context.path, k], type: (typeof o[k])};
+
+        if(f) {
+            f(ctx, k, o[k]);
+        }
+        _walk(ctx, o[k], f);
+    }
+}
+
 maple("maple/hello.mp");
