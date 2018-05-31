@@ -14,20 +14,20 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file leaf-file-name="hello.mp" pinned="false" current-in-tab="true">
+      <file leaf-file-name="hello.mp" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/maple/hello.mp">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="502">
-              <caret line="40" column="52" selection-start-line="40" selection-start-column="52" selection-end-line="40" selection-end-column="52" />
+            <state relative-caret-position="754">
+              <caret line="54" column="60" selection-start-line="54" selection-start-column="60" selection-end-line="54" selection-end-column="60" />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="maple.js" pinned="false" current-in-tab="false">
+      <file leaf-file-name="maple.js" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/maple.js">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="4320">
-              <caret line="240" column="24" selection-start-line="240" selection-start-column="24" selection-end-line="240" selection-end-column="24" />
+            <state relative-caret-position="288">
+              <caret line="155" column="27" selection-start-line="155" selection-start-column="27" selection-end-line="155" selection-end-column="27" />
             </state>
           </provider>
         </entry>
@@ -76,8 +76,8 @@
         <option value="$PROJECT_DIR$/src/blockchaininfo.js" />
         <option value="$PROJECT_DIR$/src/redstar.js" />
         <option value="$PROJECT_DIR$/src/oom.js" />
-        <option value="$PROJECT_DIR$/src/maple.js" />
         <option value="$PROJECT_DIR$/maple/hello.mp" />
+        <option value="$PROJECT_DIR$/src/maple.js" />
       </list>
     </option>
   </component>
@@ -180,12 +180,12 @@
       <workItem from="1526959630605" duration="2242000" />
       <workItem from="1527231294400" duration="14361000" />
       <workItem from="1527325022662" duration="42768000" />
-      <workItem from="1527583154632" duration="53110000" />
+      <workItem from="1527583154632" duration="54196000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="147425000" />
+    <option name="totallyTimeSpent" value="148511000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="0" y="0" width="1920" height="1080" extended-state="0" />
@@ -398,17 +398,17 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/maple.js">
+    <entry file="file://$PROJECT_DIR$/maple/hello.mp">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="4320">
-          <caret line="240" column="24" selection-start-line="240" selection-start-column="24" selection-end-line="240" selection-end-column="24" />
+        <state relative-caret-position="754">
+          <caret line="54" column="60" selection-start-line="54" selection-start-column="60" selection-end-line="54" selection-end-column="60" />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/maple/hello.mp">
+    <entry file="file://$PROJECT_DIR$/src/maple.js">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="502">
-          <caret line="40" column="52" selection-start-line="40" selection-start-column="52" selection-end-line="40" selection-end-column="52" />
+        <state relative-caret-position="288">
+          <caret line="155" column="27" selection-start-line="155" selection-start-column="27" selection-end-line="155" selection-end-column="27" />
         </state>
       </provider>
     </entry>

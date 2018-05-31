@@ -153,7 +153,7 @@ function maple(file) {
         return evalInContext(maple.src.main, content);
     };
 
-    maple.handler["@select"]=(maper, content, params)=>{
+    maple.handler["@foreach"]=(maper, content, params)=>{
         let rs = [];
         for(let p of params) {
             eval(`var $$ = maple.src.main.${p};`);
