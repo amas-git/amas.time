@@ -78,8 +78,29 @@ function maple(file) {
                 c.content = maple.content;
                 // maple function
                 if(!c.name.startsWith('@')) {
-                    maple.functions[c.name] = function ($,...params) {
-                        return eval('`' + c.content.join('\n').replace(/`/g, '\\`') + '`');
+                    maple.functions[c.name] = function ($,$1,$2,$3,$4,$5,$6,$7,$8,$9,...params) {
+                        let jscode   = [];
+                        let template = [];
+                        let isheader = true;
+                        let _stop = false;
+                        let _ret = "";
+                        function stop (ret="") {
+                            _stop = true;
+                            _ret = ret;
+                        }
+                        for(let l of c.content) {
+                            if(l.startsWith('#') && isheader){
+                                jscode.push(l.slice(1));
+                            } else {
+                                template.push(l);
+                                isheader = false;
+                            }
+                        }
+                        eval(jscode.join('\n'));
+                        if(_stop) {
+                            return _ret;
+                        }
+                        return eval('`' + template.join('\n').replace(/`/g, '\\`') + '`');
                     };
                 }
 
@@ -131,19 +152,34 @@ function maple(file) {
 
     };
 
-    function hello() {
-        return "HELLO";
+    function foreach(o, name, ...params) {
+        let r=[];
+        if(Object.keys(o).length > 0) {
+            for (KEY in o) {
+                let $ = o[KEY];
+                r.push(_(name)($,KEY,params));
+            }
+        } else {
+            r.push(o);
+        }
+        return r.join("\n");
+    }
+
+    function test(expr, name) {
+        if(eval(expr)) {
+
+        }
     }
 
     function _(name) {
         return maple.functions[name];
     };
 
-    function evalInContext(o, content) {
-        if(Array.isArray(o)) {
+    function evalInContext($, content) {
+        if(Array.isArray($)) {
             return E(content.join('\n'));
         }
-        let ret = eval(`let {${Object.keys(o)}} = o;`
+        let ret = eval(`let {${Object.keys($)}} = $;`
             + '`'+content.join('\n').replace(/`/g,'\\`')+'`'
         );
         return ret;
@@ -220,7 +256,8 @@ function walk(context, o, f) {
         context = {
             level: 0,
             path: [''],
-            type: (typeof o)
+            type: (typeof o),
+            key: ""
         }
     }
 
@@ -229,7 +266,7 @@ function walk(context, o, f) {
     }
 
     for(let k in o) {
-        let ctx = {path: [...context.path, k], type: (typeof o[k]), level: context.level+1};
+        let ctx = {path: [...context.path, k], type: (typeof o[k]), level: context.level+1, key: k};
 
         if(f) {
             f(ctx, k, o[k]);
