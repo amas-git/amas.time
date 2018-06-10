@@ -34,3 +34,66 @@ function evalTemplate(template) {
 }
 
 console.log(evalTemplate('Zhoujb age=${person.age}'));
+
+
+const obj = [
+    {level:1, id:"1", nodes:[]},
+    {level:2, id:"1.1", nodes:[]},
+    {level:3, id:"1.1.1", nodes:[]},
+    {level:2, id:"1.2", nodes:[]},
+    {level:3, id:"1.2.1", nodes:[]},
+    {level:3, id:"1.1.2", nodes:[]}
+];
+
+
+
+
+function mktree(xs, parent={level:0, id:"root", nodes:[]}, level="level", child='nodes') {
+    let stack = [parent];
+    let top = stack.pop();
+
+    for(let i=0; i<xs.length; ++i) {
+        let x = xs[i];
+
+        while (x[level] <= top[level] && stack.length > 0) {
+            top = stack.pop();
+        }
+        top[child].push(x);
+        stack.push(top);
+        stack.push(x);
+        top = x;
+    }
+    return parent;
+}
+
+function _cp(xs, ys) {
+    const rs=[];
+    for(let x of xs) {
+        for(let y of ys) {
+            rs.push(Array.isArray(x) ? [...x,y] : [x, y]);
+        }
+    }
+    return rs;
+}
+
+function cp(r, ...xs){
+    xs.forEach((x) => { r = _cp(r, x);});
+    return r;
+}
+
+function foldl(xs, f, z) {
+    if(xs.length === 0) {
+        return z;
+    }
+    return foldl(xs.slice(1),f,f(xs[0],z));
+}
+
+
+
+console.log(JSON.stringify(mktree(obj),null,2));
+
+
+console.log(foldl([1,2,3,4],(x,y)=>{ return x+y;}, 0))
+
+
+console.log(cp([1,2,3,4,5,6,7,8],['a','b'], ['A','B']));
