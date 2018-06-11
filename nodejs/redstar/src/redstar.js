@@ -85,7 +85,7 @@ function foldl(xs, f, z) {
     if(xs.length === 0) {
         return z;
     }
-    return foldl(xs.slice(1),f,f(xs[0],z));
+    return foldl(xs.sl  ice(1),f,f(z,xs[0]));
 }
 
 
@@ -93,7 +93,7 @@ function foldl(xs, f, z) {
 console.log(JSON.stringify(mktree(obj),null,2));
 
 
-console.log(foldl([1,2,3,4],(x,y)=>{ return x+y;}, 0))
+console.log(foldl([1,2,3,4],(x,y)=>{ return x-y;}, 0))
 
 
-console.log(cp([1,2,3,4,5,6,7,8],['a','b'], ['A','B']));
+console.log(cp([{a:1},2,3,4,5,6,7,8],['a','b'], ['A','B']));
