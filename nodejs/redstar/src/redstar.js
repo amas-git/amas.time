@@ -85,7 +85,7 @@ function foldl(xs, f, z) {
     if(xs.length === 0) {
         return z;
     }
-    return foldl(xs.sl  ice(1),f,f(z,xs[0]));
+    return foldl(xs.slice(1),f,f(z,xs[0]));
 }
 
 
@@ -97,3 +97,14 @@ console.log(foldl([1,2,3,4],(x,y)=>{ return x-y;}, 0))
 
 
 console.log(cp([{a:1},2,3,4,5,6,7,8],['a','b'], ['A','B']));
+
+
+function eprint(expr) {
+    console.log('${expr}  -> ' + eval(expr));
+}
+
+eprint("");
+eprint(12);
+eprint('true');
+eprint('false');
+eprint('1>0 && 2<1');

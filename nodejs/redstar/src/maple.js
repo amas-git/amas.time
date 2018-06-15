@@ -22,8 +22,30 @@ function mkTemplateStrings(env, template) {
     function transId(xs) {
         return xs;
     }
-    let keys = transId(Object.keys(env));
-    return eval(`let {${keys.join(",")}} = env; \`${template.replace(/`/g, '\\`')}\``);
+    if(Array.isArray(env)) {
+        console.error(":array");
+    } else {
+        let keys = transId(Object.keys(env));
+        return eval(`let {${keys.join(",")}} = env; \`${template.replace(/`/g, '\\`')}\``);
+    }
+}
+
+
+function mktree(xs, root={level:0, id:"root", nodes:[]}, level="level", child='nodes') {
+    function parentOf(xs, x, anchor) {
+        for(let i=anchor-1; i>=0; i--) {
+            if(xs[i][level] > x[level]) { // TODO: override with isParent function & export it
+                return xs[i];
+            }
+        }
+        return null;
+    }
+
+    for(let i=0; i<xs.length; ++i) {
+        let p = parentOf(xs, xs[i], i) || root;
+        p[child].push(xs[i]);
+    }
+    return root;
 }
 
 /**
@@ -52,7 +74,8 @@ const SectionType = {
     FUNC: 'func',
     TEXT: 'text',
     NORM: 'norm',
-    PART: 'part'
+    PART: 'part',
+    LOOP: 'loop'
 };
 
 Object.freeze(SectionType);
@@ -70,6 +93,8 @@ class Section {
         this.level = level;
         this.sections = [];
         this.contents = [];
+        this.params   = [];
+        this.__join   = null;
     }
 
     addChildSection(section) {
@@ -84,21 +109,80 @@ class Section {
         return this.type == SectionType.FUNC;
     }
 
+    isNorm() {
+        return this.type == SectionType.NORM;
+    }
+
+    isPart() {
+        return this.type == SectionType.PART;
+    }
+
+    isLoop() {
+        return this.type == SectionType.LOOP;
+    }
+
+    test() {
+        if(this.params.length == 0 || !this.params[0] || eval(this.params[0])) {
+            return true;
+        } else {
+            false;
+        }
+    }
+
+    join(c='\n') {
+        if(!this.__join) {
+            this.__join = this.contents.join(c);
+        }
+        return this.__join;
+    }
+
+    eval(env) {
+        let rs = [];
+        if(this.isPart()) {
+            if(this.test()) {
+                rs.push(mkTemplateStrings(env.src, this.join()));
+                for(let s of this.sections) {
+                    rs.push(...(s.eval(env)));
+                }
+            }
+        } else if(this.isLoop()) {
+            for(let p of this.params) {
+                for(let o of env.src[p]) {
+                    rs.push(mkTemplateStrings(o, this.join()));
+                    for (let s of this.sections) {
+                        rs.push(...(s.eval(env)));
+                    }
+                }
+            }
+        } else if(this.isNorm()) {
+            let r = env.handlers[this.name](env, this.contents, this.params);
+            if(r) {
+                rs.push(r);
+            }
+        } else if(this.isRoot()) {
+            for(let s of this.sections) {
+                rs.push(...(s.eval(env)));
+            }
+        }
+        return rs;
+    }
+
     static createRootNode() {
         return new Section("root",SectionType.ROOT,0);
     }
 };
 
-function treelize(sections, parent=Section.createRootNode()) {
-    if(sections.length == 0) {
-        return parent;
-    }
+const BASE_HANDLER = {
+    e(env, content, params) {
+        return mkTemplateStrings(env, content.join('\n'));
+    },
 
-    parent.addChildSection(treelize(sections))
-    for(let s of sections) {
-        if(s.level < parent.level) {
-            parent.addChildSection(s);
-        }
+    echo(env, content, params) {
+        return content.join('\n');
+    },
+
+    src(env, content, params) {
+        eval(`env.src={${content.join('\n')}};`);
     }
 }
 
@@ -106,10 +190,11 @@ class Maple {
     constructor(file) {
         this.currentSection = null;
         this.file = file;
-        this.handlers = [];
+        this.handlers = BASE_HANDLER;
         this.sections = [];
         this.functions= [];
-
+        this.root = {};
+        this.src = {};
     }
 
     toString() {
@@ -120,23 +205,36 @@ class Maple {
         let type = SectionType.TEXT;
         if(!name) {
             type = SectionType.PART;
+            name = "@part";
+        } else if("foreach" == name) {
+            type = SectionType.LOOP;
+            name = "@loop";
         } else {
-            type = name.startsWith('@') ? SectionType.NORM : SectionType.FUNC;
+            type = SectionType.NORM;
         }
 
 
-        this.currentSection = new Section(name, type, level);
-        if(this.currentSection.isFunc()) {
-            this.functions.push(this.currentSection);
-        } else {
-            this.sections.push(this.currentSection);
-        }
+        this.currentSection = new Section(name, type, (type == SectionType.FUNC) ? 1024 : level); // function is the fixed level
+        this.currentSection.params = params;
+        this.sections.push(this.currentSection);
     }
 
     addContent(content) {
         if(this.currentSection) {
             this.currentSection.contents.push(content);
         }
+    }
+
+    tree() {
+        this.root = mktree(this.sections, Section.createRootNode(), "level", "sections");
+        return this;
+    }
+
+
+    eval() {
+        //console.log(JSON.stringify(this.root,null,4));
+        let rs = this.root.eval(this);
+        console.error(rs.join("\n"));
     }
 
     print() {
@@ -149,19 +247,21 @@ function run_maple(file) {
 
     readline(file, (line, num) => {
         if(line == null) {
-            maple.print();
+            maple.tree();
+            maple.eval();
         }
 
         let match;
 
-        if(match = /^#([-]{4,256})\|\s([@]*[a-z_A-Z]*)(.*)$/.exec(line)) {
+        if(match = /^#([-]{4,256})\|\s[@]([a-z_A-Z][a-z_A-Z0-9]*)(.*)$/.exec(line)) {
             let level  = match[1].length;
             let name   = match[2].trim();
             let params = match[3].trim().split(/\s+/);
             maple.addSection(name, params, level);
-        } else if(match = /^#([-]{4,256})[\|]*\s*$/.exec(line)) {
+        } else if(match = /^#([-]{4,256})[\|]*\s*(.*)$/.exec(line)) {
             let level = match[1].length;
-            maple.addSection("", [], level);
+            let param = match[2].trim();
+            maple.addSection("", [param], level);
         } else {
             maple.addContent(line);
         }
