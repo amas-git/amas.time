@@ -152,13 +152,17 @@ class Section {
             }
         } else if(this.isLoop()) {
             for(let p of this.params) {
-                for(let o of env.src[p]) {
+                //console.error("\n" + JSON.stringify(env.context) + " ---- " + p + " : " + env.context[p]);
+                let _context = env.context;
+                console.log(p + " -- " + env.context[p]);
+                for(let o of env.context[p]) {
                     env.context = o;
                     rs.push(mkTemplateStrings(env.context, this.join()));
                     for (let s of this.sections) {
                         rs.push(...(s.eval(env)));
                     }
                 }
+                env.context = _context;
             }
         } else if(this.isNorm()) {
             let r = env.handlers[this.name](env, this.contents, this.params);
