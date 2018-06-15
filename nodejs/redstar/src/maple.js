@@ -18,16 +18,21 @@ function isIterable(o) {
     return o == null ? false : typeof o[Symbol.iterator] === 'function';
 }
 
-function mkTemplateStrings(env, template) {
+function mkTemplateStrings($, template) {
     function transId(xs) {
         return xs;
     }
-    if(Array.isArray(env)) {
-        console.error(":array");
+    template = template.replace(/`/g, '\\`');
+    if(Array.isArray($)) {
+        return eval(`\`${template}\``);
     } else {
-        let keys = transId(Object.keys(env));
-        return eval(`let {${keys.join(",")}} = env; \`${template.replace(/`/g, '\\`')}\``);
+        let keys = transId(Object.keys($));
+        return eval(`let {${keys.join(",")}} = $; \`${template}\``);
     }
+}
+
+function mkTemplate(context, template) {
+
 }
 
 
@@ -140,7 +145,7 @@ class Section {
         let rs = [];
         if(this.isPart()) {
             if(this.test()) {
-                rs.push(mkTemplateStrings(env.src, this.join()));
+                rs.push(mkTemplateStrings(env.context, this.join()));
                 for(let s of this.sections) {
                     rs.push(...(s.eval(env)));
                 }
@@ -148,7 +153,8 @@ class Section {
         } else if(this.isLoop()) {
             for(let p of this.params) {
                 for(let o of env.src[p]) {
-                    rs.push(mkTemplateStrings(o, this.join()));
+                    env.context = o;
+                    rs.push(mkTemplateStrings(env.context, this.join()));
                     for (let s of this.sections) {
                         rs.push(...(s.eval(env)));
                     }
@@ -182,7 +188,7 @@ const BASE_HANDLER = {
     },
 
     src(env, content, params) {
-        eval(`env.src={${content.join('\n')}};`);
+        env.context = env.src = JSON.parse(eval(`let $={${content.join('\n')}}; JSON.stringify($);`));
     }
 }
 
@@ -195,6 +201,7 @@ class Maple {
         this.functions= [];
         this.root = {};
         this.src = {};
+        this.context = {};
     }
 
     toString() {
@@ -280,7 +287,6 @@ function readline(file, cb) {
         cb(null,num++);
     });
 }
-
 
 
 run_maple("maple/hello.mp");
