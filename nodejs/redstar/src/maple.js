@@ -3,7 +3,8 @@ const minimatch = require("minimatch")
 /**
  * TODO:
  *  1. 用array.some()改写正则匹配部分
- *
+ * HISTORY:
+ *  1. 2018.06.18: Finished Core Design
  * @param text
  */
 function error(text) {
@@ -180,7 +181,7 @@ class Section {
         } else if(this.isNorm()) {
             let r = env.handlers[this.name](env, this.contents, this.params);
             if(r) {
-                Section.push(rs, [r]);
+                Section.push(rs, r);
             }
         } else if(this.isRoot()) {
             for(let s of this.sections) {
@@ -314,7 +315,7 @@ class Maple {
 
     tree() {
         this.root = mktree(this.sections, Section.createRootNode(), "level", "sections");
-        console.log(JSON.stringify(this.functions,null,4));
+        //console.log(JSON.stringify(this.functions,null,4));
         return this;
     }
 
