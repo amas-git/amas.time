@@ -18,16 +18,20 @@ function isIterable(o) {
     return o == null ? false : typeof o[Symbol.iterator] === 'function';
 }
 
-function mkTemplateStrings($, template) {
+function mkTemplateStrings(env, template) {
     function transId(xs) {
         return xs;
     }
-    template = template.replace(/`/g, '\\`');
+    let $ = env.context;
+    let T = template.replace(/`/g, '\\`');
+    let argv = env.__context.argv;
+    let $func = env.functions;
+
     if(Array.isArray($)) {
-        return eval(`\`${template}\``);
+        return eval(`\`${T}\``);
     } else {
         let keys = transId(Object.keys($));
-        return eval(`let {${keys.join(",")}} = $; \`${template}\``);
+        return eval(`let {${keys.join(",")}} = $; \`${T}\``);
     }
 }
 
@@ -126,8 +130,10 @@ class Section {
         return this.type == SectionType.LOOP;
     }
 
-    test() {
-        if(this.params.length == 0 || !this.params[0] || eval(this.params[0])) {
+    test(env) {
+        let argv = env.__context.argv;
+        if(this.params.length == 0 || !this.params[0] || eval(`let $=env.context; ${this.params[0]}`)) {
+            //console.log(`>>> ${this.params[0]}`);
             return true;
         } else {
             false;
@@ -141,38 +147,62 @@ class Section {
         return this.__join;
     }
 
-    eval(env) {
+    static push(rs, xs) {
+        if(Array.isArray(xs)) {
+            if (xs.length) { rs.push(...xs); }
+        } else {
+            if (xs) {rs.push(xs);}
+        }
+        return rs;
+    }
+
+    eval(env={}) {
         let rs = [];
-        if(this.isPart()) {
-            if(this.test()) {
-                rs.push(mkTemplateStrings(env.context, this.join()));
-                for(let s of this.sections) {
-                    rs.push(...(s.eval(env)));
-                }
+        if(this.isPart() && this.test(env)) {
+            Section.push(rs, mkTemplateStrings(env, this.join()));
+            for (let s of this.sections) {
+                Section.push(rs,s.eval(env));
             }
         } else if(this.isLoop()) {
             for(let p of this.params) {
-                //console.error("\n" + JSON.stringify(env.context) + " ---- " + p + " : " + env.context[p]);
-                let _context = env.context;
-                console.log(p + " -- " + env.context[p]);
-                for(let o of env.context[p]) {
-                    env.context = o;
-                    rs.push(mkTemplateStrings(env.context, this.join()));
+                let os = ('$' == p) ? env.context : env.context[p];
+                // TODO: CHECK os is iterable or NOT
+                for(let o of os) {
+                    env.changeContext(o);
+                    Section.push(rs, mkTemplateStrings(env, this.join()));
                     for (let s of this.sections) {
-                        rs.push(...(s.eval(env)));
+                        Section.push(rs, (s.eval(env)));
                     }
+                    env.restoreContext();
                 }
-                env.context = _context;
+
             }
         } else if(this.isNorm()) {
             let r = env.handlers[this.name](env, this.contents, this.params);
             if(r) {
-                rs.push(r);
+                Section.push(rs, [r]);
             }
         } else if(this.isRoot()) {
             for(let s of this.sections) {
                 rs.push(...(s.eval(env)));
             }
+        } else if(this.isFunc()) {
+            //TODO: 实现函数的功能
+            //console.log("--------------?" + this.params)
+        }
+        return rs;
+    }
+
+    call(env, argv) {
+        if(!this.isFunc()) {
+            return [];
+        }
+        //console.log(`PARM:　${params.length}`);
+        let rs = [];
+        env.argv(argv);
+        Section.push(rs, mkTemplateStrings(env, this.join()));
+        for(let s of this.sections) {
+            Section.push(rs, (s.eval(env)));
         }
         return rs;
     }
@@ -192,7 +222,8 @@ const BASE_HANDLER = {
     },
 
     src(env, content, params) {
-        env.context = env.src = JSON.parse(eval(`let $={${content.join('\n')}}; JSON.stringify($);`));
+        env.src = JSON.parse(eval(`let $={${content.join('\n')}}; JSON.stringify($);`));
+        env.changeContext(env.src);
     }
 }
 
@@ -202,14 +233,35 @@ class Maple {
         this.file = file;
         this.handlers = BASE_HANDLER;
         this.sections = [];
-        this.functions= [];
+        this.func = {};
+        this.functions= {};
         this.root = {};
         this.src = {};
-        this.context = {};
+        this.__context = {stack:[], c:{}, argv:[]};
+    }
+
+    get context() {
+        return this.__context.c;
+    }
+
+    changeContext(ctx) {
+        this.__context.stack.push(ctx);
+        this.__context.c = ctx;
+        //console.log(`[CHANGE CTX +] : CTX = ${JSON.stringify(this.__context.c)} TYPE:${(typeof this.__context.c)}`);
+    }
+
+    restoreContext() {
+        this.__context.stack.pop();
+        this.__context.c =  this.__context.stack[this.__context.stack.length - 1];
+        //console.log(`[CHANGE CTX -] : CTX = ${JSON.stringify(this.__context.c)} TYPE:${(typeof this.__context.c)}`);
     }
 
     toString() {
         return `MAPLE:${this.file}`;
+    }
+
+    argv(argv) {
+        this.__context.argv = argv;
     }
 
     addSection(name, params, level=0) {
@@ -220,14 +272,38 @@ class Maple {
         } else if("foreach" == name) {
             type = SectionType.LOOP;
             name = "@loop";
+        } else if("func" == name) {
+            type = SectionType.FUNC;
+            name = "@func";
         } else {
             type = SectionType.NORM;
         }
 
 
-        this.currentSection = new Section(name, type, (type == SectionType.FUNC) ? 1024 : level); // function is the fixed level
+        this.currentSection = new Section(name, type, level);
         this.currentSection.params = params;
         this.sections.push(this.currentSection);
+        if(this.currentSection.isFunc()) {
+            let [fname,  ...opts] = this.currentSection.params;
+            this.func[fname] = this.currentSection;
+
+            this.addFunction(fname,(...parms) => {
+                let section = this.func[fname];
+                return section.call(this, parms);
+            }, "");
+        }
+    }
+
+    addFunction(fname, f, module) {
+        if(module) {
+            if(!this.functions[module]) {
+                this.functions[module] = {};
+            }
+            this.functions[module][fname] = f;
+        } else {
+            this.functions[fname] = f;
+        }
+        //console.log("+F:　"+Object.keys(this.functions));
     }
 
     addContent(content) {
@@ -238,12 +314,12 @@ class Maple {
 
     tree() {
         this.root = mktree(this.sections, Section.createRootNode(), "level", "sections");
+        console.log(JSON.stringify(this.functions,null,4));
         return this;
     }
 
 
     eval() {
-        //console.log(JSON.stringify(this.root,null,4));
         let rs = this.root.eval(this);
         console.error(rs.join("\n"));
     }
@@ -294,3 +370,31 @@ function readline(file, cb) {
 
 
 run_maple("maple/hello.mp");
+
+//
+// function f(m, n) {
+//     'strict mode'
+//     if(n == 0) {
+//         return n;
+//     }
+//     return f(m+n, n-1);
+// }
+//
+// console.log(f(1300));
+
+// let x = {a:1, b:2};
+// delete x.a;
+// console.log(JSON.stringify(x));
+
+// var xs = {
+//     name:{
+//         a:{number : 21, age : 1},
+//         b:{number : 23, age : 2},
+//         c:{number : 24, age : 3}
+//     }
+// };
+//
+//
+// for(x of xs) {
+//     console.log(JSON.stringify(x));
+// }

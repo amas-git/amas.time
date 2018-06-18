@@ -103,8 +103,23 @@ function eprint(expr) {
     console.log('${expr}  -> ' + eval(expr));
 }
 
-eprint("");
-eprint(12);
-eprint('true');
-eprint('false');
-eprint('1>0 && 2<1');
+// eprint("");
+// eprint(12);
+// eprint('true');
+// eprint('false');
+// eprint('1>0 && 2<1');
+
+const host=["gmail","ask","aol","hotmail","yahoo","msn"];
+const names_m=["alice", "anna", "mina", "jane", "kathy", "cici", "rita", "alice", "michelle", "bob", "diana", "frank", "hellon",
+"eric", "jonny", "vencent", "teresa", "vanessa", "haword", "derek", "jim", "jason", "jimmy", "larry", "martin", "patrick", "kate","richard",
+"sun", "lee", "king", "bit", "tony", "mick", "steven", "shawn", "maple", "live", "wang", "zhao", "ming", "lin", "kong", "chloe", "bee", "blue", "red", "star"
+,"nature", "maya", "cloud", "kevin", "qian","wu","zheng", "feng", "tong", "yang", "fish", "stella", "rain", "river", "fenn", "tea", "bing", "happy", "tiffany",
+"milk", "moon", "jolln", "coco", "agerk", "love", "peace"];
+
+const tail = ["01", "02", "03", "04", "ol", "05", "06", "th", "an", "op", "ry", "nt", "kz", "on", "99", "45", "75",
+"c1", "00", "ob", "mit", "go", "sh", "15", "2d", "76", "oo"];
+var ccc = 0;
+for(let x of cp(names_m, tail)) {
+    ccc=(ccc+1)%6;
+    console.log(`${x[0]}_0000_${x[1]}@${host[ccc]}.com`);
+}
