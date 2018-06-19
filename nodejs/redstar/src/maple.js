@@ -234,7 +234,6 @@ class Maple {
         this.file = file;
         this.handlers = BASE_HANDLER;
         this.sections = [];
-        this.func = {};
         this.functions= {};
         this.root = {};
         this.src = {};
@@ -284,12 +283,12 @@ class Maple {
         this.currentSection = new Section(name, type, level);
         this.currentSection.params = params;
         this.sections.push(this.currentSection);
+
         if(this.currentSection.isFunc()) {
             let [fname,  ...opts] = this.currentSection.params;
-            this.func[fname] = this.currentSection;
-
+            let s = this.currentSection;
             this.addFunction(fname,(...parms) => {
-                let section = this.func[fname];
+                let section = s;
                 return section.call(this, parms);
             }, "");
         }
@@ -369,13 +368,8 @@ function readline(file, cb) {
     });
 }
 
+run_maple("maple/hello.mp");
 
-//run_maple("maple/hello.mp");
-
-let  x11 = {a:1};
-let  y = x11;
-x11 = 1;
-console.log(`${x11}, ${y}`);
 //
 // function f(m, n) {
 //     'strict mode'
