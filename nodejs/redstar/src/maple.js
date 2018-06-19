@@ -370,8 +370,12 @@ function readline(file, cb) {
 }
 
 
-run_maple("maple/hello.mp");
+//run_maple("maple/hello.mp");
 
+let  x11 = {a:1};
+let  y = x11;
+x11 = 1;
+console.log(`${x11}, ${y}`);
 //
 // function f(m, n) {
 //     'strict mode'
