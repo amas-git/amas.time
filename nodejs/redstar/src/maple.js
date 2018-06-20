@@ -370,6 +370,9 @@ function readline(file, cb) {
 
 run_maple("maple/hello.mp");
 
+
+
+//console.log([1,2,3].reduce((acc, n) => (acc+n) , 0));
 //
 // function f(m, n) {
 //     'strict mode'
