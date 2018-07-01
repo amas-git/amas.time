@@ -112,33 +112,28 @@ class Section {
     }
 
     isRoot() {
-        return this.type == SectionType.ROOT;
+        return this.type === SectionType.ROOT;
     }
 
     isFunc() {
-        return this.type == SectionType.FUNC;
+        return this.type === SectionType.FUNC;
     }
 
     isNorm() {
-        return this.type == SectionType.NORM;
+        return this.type === SectionType.NORM;
     }
 
     isPart() {
-        return this.type == SectionType.PART;
+        return this.type === SectionType.PART;
     }
 
     isLoop() {
-        return this.type == SectionType.LOOP;
+        return this.type === SectionType.LOOP;
     }
 
     test(env) {
         let argv = env.__context.argv;
-        if(this.params.length == 0 || !this.params[0] || eval(`let $=env.context; ${this.params[0]}`)) {
-            //console.log(`>>> ${this.params[0]}`);
-            return true;
-        } else {
-            false;
-        }
+        return (this.params.length === 0 || !this.params[0] || eval(`let $=env.context; ${this.params[0]}`));
     }
 
     join(c='\n') {
@@ -161,9 +156,7 @@ class Section {
         let rs = [];
         if(this.isPart() && this.test(env)) {
             Section.push(rs, mkTemplateStrings(env, this.join()));
-            for (let s of this.sections) {
-                Section.push(rs,s.eval(env));
-            }
+            this.evalchild(rs, env);
         } else if(this.isLoop()) {
             for(let p of this.params) {
                 let os = ('$' == p) ? env.context : env.context[p];
@@ -171,27 +164,25 @@ class Section {
                 for(let o of os) {
                     env.changeContext(o);
                     Section.push(rs, mkTemplateStrings(env, this.join()));
-                    for (let s of this.sections) {
-                        Section.push(rs, (s.eval(env)));
-                    }
+                    this.evalchild(rs, env);
                     env.restoreContext();
                 }
 
             }
         } else if(this.isNorm()) {
             let r = env.handlers[this.name](env, this.contents, this.params);
-            if(r) {
-                Section.push(rs, r);
-            }
+            Section.push(rs, r);
         } else if(this.isRoot()) {
-            for(let s of this.sections) {
-                rs.push(...(s.eval(env)));
-            }
+            this.evalchild(rs, env);
         } else if(this.isFunc()) {
             //TODO: 实现函数的功能
             //console.log("--------------?" + this.params)
         }
         return rs;
+    }
+
+    evalchild(rs, env) {
+        this.sections.forEach((s) => Section.push(rs, (s.eval(env))));
     }
 
     call(env, argv) {
@@ -202,16 +193,14 @@ class Section {
         let rs = [];
         env.argv(argv);
         Section.push(rs, mkTemplateStrings(env, this.join()));
-        for(let s of this.sections) {
-            Section.push(rs, (s.eval(env)));
-        }
+        this.evalchild(rs, env);
         return rs;
     }
 
     static createRootNode() {
         return new Section("root",SectionType.ROOT,0);
     }
-};
+}
 
 const BASE_HANDLER = {
     e(env, content, params) {
@@ -226,7 +215,7 @@ const BASE_HANDLER = {
         env.src = JSON.parse(eval(`let $={${content.join('\n')}}; JSON.stringify($);`));
         env.changeContext(env.src);
     }
-}
+};
 
 class Maple {
     constructor(file) {
@@ -327,10 +316,11 @@ class Maple {
     print() {
         console.log(JSON.stringify(this,null,4));
     }
-};
+}
 
 function run_maple(file) {
     const maple = new Maple(file);
+    maple.addFunction("L",(t) => t.toUpperCase(),"text");
 
     readline(file, (line, num) => {
         if(line == null) {
@@ -341,14 +331,11 @@ function run_maple(file) {
         let match;
 
         if(match = /^#([-]{4,256})\|\s[@]([a-z_A-Z][a-z_A-Z0-9]*)(.*)$/.exec(line)) {
-            let level  = match[1].length;
-            let name   = match[2].trim();
-            let params = match[3].trim().split(/\s+/);
-            maple.addSection(name, params, level);
+            let [_,level, name, params] = match;
+            maple.addSection(name, params.trim().split(/\s+/), level.length);
         } else if(match = /^#([-]{4,256})[\|]*\s*(.*)$/.exec(line)) {
-            let level = match[1].length;
-            let param = match[2].trim();
-            maple.addSection("", [param], level);
+            let [_,level, params] = match;
+            maple.addSection("", [params.trim()], level.length);
         } else {
             maple.addContent(line);
         }
@@ -370,6 +357,12 @@ function readline(file, cb) {
 
 run_maple("maple/hello.mp");
 
+
+
+// let xs = ["a", "B", "c "];
+// let [a, b, c] = xs;
+//
+// console.log(`${a} | ${b} | ${c}`);
 //
 // function f(m, n) {
 //     'strict mode'
