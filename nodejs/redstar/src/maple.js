@@ -118,11 +118,9 @@ class Section {
     test(env) {
         let argv = env.__context.argv;
         if(this.params.length === 0 || !this.params[0] || eval(`let $=env.context; ${this.params[0]}`)) {
-            //console.log(`>>> ${this.params[0]}`);
             return true;
-        } else {
-            false;
         }
+        return  false;
     }
 
     join(c='\n') {
