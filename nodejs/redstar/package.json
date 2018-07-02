@@ -5,6 +5,8 @@
     "bluebird": "^3.5.1",
     "bluebirds": "0.0.6",
     "cheerio": "^1.0.0-rc.2",
+    "koa": "^2.5.1",
+    "koa-router": "^7.4.0",
     "minimatch": "^3.0.4",
     "request": "^2.86.0",
     "sequelize": "^4.38.0",
