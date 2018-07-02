@@ -302,10 +302,11 @@ class Maple {
     print() {
         console.log(JSON.stringify(this,null,4));
     }
-};
+}
 
 function run_maple(file) {
     const maple = new Maple(file);
+    maple.addFunction("L",(t) => t.toUpperCase(),"text");
 
     readline(file, (line, num) => {
         if(line == null) {

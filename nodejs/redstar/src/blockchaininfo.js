@@ -1,6 +1,6 @@
 const request = require('request');
 
-async function httpGet(url) {
+async function GET(url) {
     return new Promise((resolve,reject) => {
         request(url, function (error, response, body) {
             if(error) {
@@ -18,7 +18,7 @@ async function httpGet(url) {
  * @returns {Promise<*>}
  */
 async function getsentbyaddress(address) {
-    return httpGet(`https://blockchain.info/q/addressbalance/getsentbyaddress/${address}`);
+    return GET(`https://blockchain.info/q/addressbalance/getsentbyaddress/${address}`);
 }
 
 
@@ -28,7 +28,7 @@ async function getsentbyaddress(address) {
  * @returns {Promise<*>}
  */
 async function getreceivedbyaddress(address) {
-    return httpGet(`https://blockchain.info/q/addressbalance/getreceivedbyaddress/${address}`);
+    return GET(`https://blockchain.info/q/addressbalance/getreceivedbyaddress/${address}`);
 }
 
 /**
@@ -37,7 +37,7 @@ async function getreceivedbyaddress(address) {
  * @returns {Promise<*>}
  */
 async function addressbalance(address) {
-    return httpGet(`https://blockchain.info/q/addressbalance/${address}`);
+    return GET(`https://blockchain.info/q/addressbalance/${address}`);
 }
 
 /**
@@ -45,7 +45,7 @@ async function addressbalance(address) {
  * @returns {Promise<void>}
  */
 async function unconfirmedcount() {
-    return httpGet('https://blockchain.info/q/unconfirmedcount');
+    return GET('https://blockchain.info/q/unconfirmedcount');
 }
 
 /**
@@ -53,7 +53,7 @@ async function unconfirmedcount() {
  * @returns {Promise<*>}
  */
 async function price24h() {
-    return httpGet('https://blockchain.info/q/price24h');
+    return GET('https://blockchain.info/q/price24h');
 }
 
 /**
@@ -61,7 +61,7 @@ async function price24h() {
  * @returns {Promise<*>}
  */
 async function transactioncount24h() {
-    return httpGet('https://blockchain.info/q/24hrtransactioncount');
+    return GET('https://blockchain.info/q/24hrtransactioncount');
 }
 
 /**
@@ -69,31 +69,31 @@ async function transactioncount24h() {
  * @returns {Promise<*>}
  */
 async function btcsent24h() {
-    return httpGet('https://blockchain.info/q/24hrbtcsent');
+    return GET('https://blockchain.info/q/24hrbtcsent');
 }
 
 async function getdifficulty() {
-    return httpGet('https://blockchain.info/q/getdifficulty');
+    return GET('https://blockchain.info/q/getdifficulty');
 }
 
 //https://blockchain.info/latestblock
 async function latestblock() {
-    return httpGet('https://blockchain.info/latestblock');
+    return GET('https://blockchain.info/latestblock');
 }
 
 async function blockOfHeight(height) {
-    return httpGet('https://blockchain.info/block-height/${height}?format=json');
+    return GET('https://blockchain.info/block-height/${height}?format=json');
 }
 
 //`https://blockchain.info/rawblock/$block_hash`
 async function block(block_hash) {
-    return httpGet(`https://blockchain.info/rawblock/${block_hash}`);
+    return GET(`https://blockchain.info/rawblock/${block_hash}`);
 }
 
 async function tx(tx_hash) {
-    return httpGet(`https://blockchain.info/rawtx/${tx_hash}`);
+    return GET(`https://blockchain.info/rawtx/${tx_hash}`);
 }
 
 async function txresult(tx_hash, address) {
-    return httpGet(`https://blockchain.info/q/txresult/${tx_hash}/${}address`);
+    return GET(`https://blockchain.info/q/txresult/${tx_hash}/${}address`);
 }
