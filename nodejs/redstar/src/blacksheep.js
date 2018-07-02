@@ -1,11 +1,10 @@
-var Sequelize = require('sequelize');
+const Sequelize = require('sequelize');
 
 const db_path = "./maple/bs.db";
 const sequelize = new Sequelize(dbname, null, null, {
     dialect: "sqlite",
     storage: db_path
 });
-=======
 
 
 function calcPrice(txs) {
@@ -34,4 +33,3 @@ console.log(calcPrice(tx));
 valueOf(100, 0.05, 50);
 
 console.log(100.0*((1+0.05)^10));
->>>>>>> 9ce1c6aef9589347fe34b0eba8c06cec6cc0f27f

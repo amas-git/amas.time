@@ -10,7 +10,6 @@ async function http_get(url) {
             if(error) {
                 resolve("");
             }
-            //console.log(response);
             resolve(response.body);
         });
     })
