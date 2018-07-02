@@ -19,6 +19,10 @@ function isIterable(o) {
     return o == null ? false : typeof o[Symbol.iterator] === 'function';
 }
 
+const TYPE_OF = function(obj) {
+    return ({}).toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase()
+}
+
 function mkTemplateStrings(env, template) {
     function transId(xs) {
         return xs;
@@ -27,8 +31,8 @@ function mkTemplateStrings(env, template) {
     let T = template.replace(/`/g, '\\`');
     let argv = env.__context.argv;
     let $func = env.functions;
-
-    if(Array.isArray($)) {
+    let $type =TYPE_OF($);
+    if(Array.isArray($) || $type === "string" || $type === "number" || $type === "boolean") {
         return eval(`\`${T}\``);
     } else {
         let keys = transId(Object.keys($));
@@ -36,25 +40,23 @@ function mkTemplateStrings(env, template) {
     }
 }
 
-function mkTemplate(context, template) {
 
-}
-
-
-function mktree(xs, root={level:0, id:"root", nodes:[]}, level="level", child='nodes') {
+function mktree(xs, root=xs[0], level="level", child='nodes') {
     function parentOf(xs, x, anchor) {
         for(let i=anchor-1; i>=0; i--) {
             if(xs[i][level] > x[level]) { // TODO: override with isParent function & export it
                 return xs[i];
             }
         }
-        return null;
+         return null;
     }
 
-    for(let i=0; i<xs.length; ++i) {
-        let p = parentOf(xs, xs[i], i) || root;
+    for(let i=1; i<xs.length; ++i) {
+        let p = parentOf(xs, xs[i], i);
         p[child].push(xs[i]);
     }
+
+    //console.error(root);
     return root;
 }
 
@@ -107,33 +109,15 @@ class Section {
         this.__join   = null;
     }
 
-    addChildSection(section) {
-
-    }
-
-    isRoot() {
-        return this.type == SectionType.ROOT;
-    }
-
-    isFunc() {
-        return this.type == SectionType.FUNC;
-    }
-
-    isNorm() {
-        return this.type == SectionType.NORM;
-    }
-
-    isPart() {
-        return this.type == SectionType.PART;
-    }
-
-    isLoop() {
-        return this.type == SectionType.LOOP;
-    }
+    isRoot() { return this.type === SectionType.ROOT; }
+    isFunc() { return this.type === SectionType.FUNC; }
+    isNorm() { return this.type === SectionType.NORM; }
+    isPart() { return this.type === SectionType.PART; }
+    isLoop() { return this.type === SectionType.LOOP; }
 
     test(env) {
         let argv = env.__context.argv;
-        if(this.params.length == 0 || !this.params[0] || eval(`let $=env.context; ${this.params[0]}`)) {
+        if(this.params.length === 0 || !this.params[0] || eval(`let $=env.context; ${this.params[0]}`)) {
             //console.log(`>>> ${this.params[0]}`);
             return true;
         } else {
@@ -157,23 +141,24 @@ class Section {
         return rs;
     }
 
+    _eval(rs, env) {
+        Section.push(rs, mkTemplateStrings(env, this.join()));
+        for (let s of this.sections) {
+            Section.push(rs,s.eval(env));
+        }
+    }
+
     eval(env={}) {
         let rs = [];
         if(this.isPart() && this.test(env)) {
-            Section.push(rs, mkTemplateStrings(env, this.join()));
-            for (let s of this.sections) {
-                Section.push(rs,s.eval(env));
-            }
+            this._eval(rs, env);
         } else if(this.isLoop()) {
             for(let p of this.params) {
                 let os = ('$' == p) ? env.context : env.context[p];
                 // TODO: CHECK os is iterable or NOT
                 for(let o of os) {
                     env.changeContext(o);
-                    Section.push(rs, mkTemplateStrings(env, this.join()));
-                    for (let s of this.sections) {
-                        Section.push(rs, (s.eval(env)));
-                    }
+                    this._eval(rs, env);
                     env.restoreContext();
                 }
 
@@ -184,9 +169,7 @@ class Section {
                 Section.push(rs, r);
             }
         } else if(this.isRoot()) {
-            for(let s of this.sections) {
-                rs.push(...(s.eval(env)));
-            }
+            this._eval(rs, env);
         } else if(this.isFunc()) {
             //TODO: 实现函数的功能
             //console.log("--------------?" + this.params)
@@ -195,22 +178,16 @@ class Section {
     }
 
     call(env, argv) {
-        if(!this.isFunc()) {
-            return [];
-        }
-        //console.log(`PARM:　${params.length}`);
         let rs = [];
         env.argv(argv);
-        Section.push(rs, mkTemplateStrings(env, this.join()));
-        for(let s of this.sections) {
-            Section.push(rs, (s.eval(env)));
-        }
+        this._eval(rs, env);
         return rs;
     }
 
     static createRootNode() {
-        return new Section("root",SectionType.ROOT,0);
+        return new Section("root",SectionType.ROOT,2048);
     }
+
 };
 
 const BASE_HANDLER = {
@@ -230,7 +207,6 @@ const BASE_HANDLER = {
 
 class Maple {
     constructor(file) {
-        this.currentSection = null;
         this.file = file;
         this.handlers = BASE_HANDLER;
         this.sections = [];
@@ -238,6 +214,8 @@ class Maple {
         this.root = {};
         this.src = {};
         this.__context = {stack:[], c:{}, argv:[]};
+        this.currentSection = Section.createRootNode();
+        this.sections.push(this.currentSection);
     }
 
     get context() {
@@ -303,18 +281,15 @@ class Maple {
         } else {
             this.functions[fname] = f;
         }
-        //console.log("+F:　"+Object.keys(this.functions));
     }
 
     addContent(content) {
-        if(this.currentSection) {
-            this.currentSection.contents.push(content);
-        }
+        this.currentSection.contents.push(content);
     }
 
     tree() {
-        this.root = mktree(this.sections, Section.createRootNode(), "level", "sections");
-        //console.log(JSON.stringify(this.functions,null,4));
+        this.root = mktree(this.sections, this.sections[0], "level", "sections");
+        //console.log(JSON.stringify(this.root, null,4));
         return this;
     }
 
@@ -336,22 +311,28 @@ function run_maple(file) {
         if(line == null) {
             maple.tree();
             maple.eval();
+            return;
         }
 
         let match;
-
-        if(match = /^#([-]{4,256})\|\s[@]([a-z_A-Z][a-z_A-Z0-9]*)(.*)$/.exec(line)) {
-            let level  = match[1].length;
-            let name   = match[2].trim();
-            let params = match[3].trim().split(/\s+/);
-            maple.addSection(name, params, level);
-        } else if(match = /^#([-]{4,256})[\|]*\s*(.*)$/.exec(line)) {
-            let level = match[1].length;
-            let param = match[2].trim();
-            maple.addSection("", [param], level);
-        } else {
-            maple.addContent(line);
+        if(line.startsWith('#----')) {
+            if (match = /^#([-]{4,256})[\|]\s[@]([a-z_A-Z][a-z_A-Z0-9]*)(.*)$/.exec(line)) {
+                let [ , level, name, params] = match;
+                maple.addSection(name.trim(), params.trim().split(/\s+/), level.length);
+            } else if (match = /^#([-]{4,256})([\|])(.*)$/.exec(line)) {
+                let [ , level,  , expr] = match;
+                if(expr.startsWith('|')) {
+                    maple.addContent(`#${level}|${expr.slice(1)}`);
+                } else {
+                    maple.addSection("", [expr.trim()], level.length);
+                }
+            } else {
+                /* NOTHING */
+            }
+            return;
         }
+
+        maple.addContent(line);
 
     });
 
@@ -368,9 +349,13 @@ function readline(file, cb) {
     });
 }
 
-run_maple("maple/hello.mp");
-
-
+//run_maple("maple/README.mp");
+// let i = Math.sign(-1);
+// console.log(`${i}`);
+// console.log(`${Math.sign(12)}`);
+// xs=[[1,2,3],4,5,6,7];
+// let [[x],] = xs;
+// console.log(x);
 
 //console.log([1,2,3].reduce((acc, n) => (acc+n) , 0));
 //
@@ -399,4 +384,47 @@ run_maple("maple/hello.mp");
 //
 // for(x of xs) {
 //     console.log(JSON.stringify(x));
+// }
+
+//
+// function a(n, s, b) {
+//     return `${n} ${s} ${JSON.stringify(b)}`;
+// }
+//
+// const f = function(s, b) {
+//     return a(110, s, b);
+// };
+//
+// const z = function (...params) {
+//     return a("Z:",...params);
+// }
+//
+// let o1 = {o:1};
+// console.log(f("a", o1));
+//
+//
+//
+// console.log(f("AAA", o1));
+//
+//
+// o1 = 2;
+//
+// console.log(z("ZZZ", o1));
+// console.log(z("BBB", {a:1}));
+// var Promise = require("bluebird");
+// const Web3js = require('web3');
+// var web3.eth = Promise.promisifyAll(web3.eth);
+// const PSUFFIX = "__ASYNC";
+//
+//
+// const Web3 = {};
+//
+// createAgentFunction(Web3, we)
+//
+// function createAgentFunction(o,from,suffix) {
+//     for(let k of Object.keys(from)) {
+//         if(k.endsWith(PSUFFIX) && typeof from[k] === 'function') {
+//             o[k.replace()] = from[k];
+//         }
+//     }
 // }

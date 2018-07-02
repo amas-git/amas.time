@@ -2,8 +2,11 @@
   "name": "src",
   "version": "0.0.1",
   "dependencies": {
+    "bluebird": "^3.5.1",
+    "bluebirds": "0.0.6",
     "cheerio": "^1.0.0-rc.2",
     "minimatch": "^3.0.4",
-    "request": "^2.86.0"
+    "request": "^2.86.0",
+    "web3": "^1.0.0-beta.34"
   }
 }
