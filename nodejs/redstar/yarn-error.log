@@ -1,0 +1,43 @@
+Arguments: 
+  /usr/bin/node /usr/lib/node_modules/yarn/bin/yarn.js install web3
+
+PATH: 
+  /src/opt/sdk/tools/bin:/src/opt/sdk/tools:/src/opt/sdk/platform-tools:/opt/jdk/bin:/home/amas/bin:/src/opt/sdk/tools/bin:/src/opt/sdk/tools:/src/opt/sdk/platform-tools:/opt/jdk/bin:/home/amas/bin:/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/bin/site_perl:/usr/bin/vendor_perl:/usr/bin/core_perl:/usr/local/bin:/usr/local/bin
+
+Yarn version: 
+  1.5.1
+
+Node version: 
+  9.8.0
+
+Platform: 
+  linux x64
+
+npm manifest: 
+  {
+    "name": "src",
+    "version": "0.0.1",
+    "dependencies": {
+      "web3": "^1.0.0-beta.30",
+      "bluebird": "^3.5.1",
+      "bluebirds": "0.0.6",
+      "cheerio": "^1.0.0-rc.2",
+      "minimatch": "^3.0.4",
+      "request": "^2.86.0"
+    }
+  }
+
+yarn manifest: 
+  No manifest
+
+Lockfile: 
+  No lockfile
+
+Trace: 
+  Error: `install` has been replaced with `add` to add new dependencies. Run "yarn add web3" instead.
+      at new MessageError (/usr/lib/node_modules/yarn/lib/cli.js:186:110)
+      at Object.<anonymous> (/usr/lib/node_modules/yarn/lib/cli.js:21987:13)
+      at Generator.next (<anonymous>)
+      at step (/usr/lib/node_modules/yarn/lib/cli.js:98:30)
+      at /usr/lib/node_modules/yarn/lib/cli.js:109:13
+      at <anonymous>
