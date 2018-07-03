@@ -53,6 +53,7 @@ class Barn {
         this.txs_s = [];
         this.ammount = 0;
         this.price0 = 0;
+        this.balance = 0;
     }
 
     buy(price, ammount) {
@@ -72,21 +73,25 @@ class Barn {
     print() {
         // 投入多少钱
         let {price:price0, ammount:ammount0, value:value_in } = calcPrice(this.txs_b);
-        console.log(`BUY : ${price0.toFixed(2)} ${ammount0} ${value_in.toFixed(2)}`);
-
-
+        console.log(`买入 : ${price0.toFixed(2)} ${ammount0} ${value_in.toFixed(2)}`);
 
         let {price:price1, ammount:ammount1, value:value_out} = calcPrice(this.txs_s);
-        console.log(`SELL: ${price1.toFixed(2)} ${ammount1} ${value_out.toFixed(2)}`);
+        console.log(`卖出 : ${price1.toFixed(2)} ${ammount1} ${value_out.toFixed(2)}`);
+        this.balance += value_out;
         // 收回多少钱
 
         let left = price0 * this.ammount;
         let prof = left + value_out - value_in;
 
-        console.log(`PROF: ${prof.toFixed(2)} LEFT: ${this.ammount}`);
-        //
-        // console.log(this.txs_s);
-        // console.log(this.txs_b)
+        console.log(`利润 : ${prof.toFixed(2)}`);
+        console.log(`流动 : ${this.balance.toFixed(2)}`);
+    }
+
+    printEstimate(step=0.05,max=20) {
+        for(let i=1; i<max; ++i) {
+            let grow = (1+step*i);
+            let target =  grow * value;
+        }
     }
 }
 
@@ -96,8 +101,7 @@ class Barn {
 let eth_usdt = new Barn();     // 0.7319 个  361.85
 eth_usdt.buy(520.8, 0.477);    // 248.4216
 eth_usdt.buy(445.0, 0.2549);   // 113.4216
-eth_usdt.sell(530.0, 0.2549);
-eth_usdt.sell(530.0, 0.477);
+eth_usdt.sell(500.0, 0.2549);
 eth_usdt.print();
 
 
