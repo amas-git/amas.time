@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue"></script>
+
+</head>
+<body>
+<div id="app">
+    <p>{{message}}</p>
+    <ol>
+        <li v-for="x in xs">
+            {{ x }}
+        </li>
+    </ol>
+
+    <input type="button"/>
+    <input type="search"/>
+    <input type="number"/>
+    <input type="range"/>
+    <input type="radio"/>
+    <input type="checkbox"/>
+    <input type="color"/>
+    <input type="datetime-local"/>
+    <input type="file" />
+    <input type="email"/>
+    <input type="text"/>
+    <input type="url"/>
+    <input type="submit"/>
+
+    <button v-on:click="reverseMessage">逆转消息</button>
+</div>
+
+</body>
+<script type="text/javascript">
+    var app = new Vue({
+        el: '#app',
+        data: {
+            message: 'Hello Vue!',
+            xs: [10,11,12,13,14,15]
+        },
+        methods: {
+            reverseMessage() {
+                this.message = this.message.toLowerCase();
+                this.xs = ["a","b","c"];
+            }
+        }
+    }),
+
+    Vue.component('todo-item', {
+        template: '<li>这是个待办项</li>'
+    })
+</script>
+</html>
