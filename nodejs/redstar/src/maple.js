@@ -1,4 +1,4 @@
-const minimatch = require("minimatch")
+//const minimatch = require("minimatch")
 
 /**
  * TODO:
@@ -31,7 +31,9 @@ function mkTemplateStrings(env, template) {
     let T = template.replace(/`/g, '\\`');
     let argv = env.__context.argv;
     let $func = env.functions;
+    let $src = env.src;
     let $type =TYPE_OF($);
+
     if(Array.isArray($) || $type === "string" || $type === "number" || $type === "boolean") {
         return eval(`\`${T}\``);
     } else {
@@ -337,6 +339,10 @@ function run_maple(file) {
 
 }
 
+function linkobj(o) {
+
+}
+
 function readline(file, cb) {
     let num = 0;
     require('readline').createInterface({
@@ -348,7 +354,9 @@ function readline(file, cb) {
     });
 }
 
-//run_maple("maple/README.mp");
+
+
+run_maple("maple/zsh.completion.mp");
 // let i = Math.sign(-1);
 // console.log(`${i}`);
 // console.log(`${Math.sign(12)}`);
