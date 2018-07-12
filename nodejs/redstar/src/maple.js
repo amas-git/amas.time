@@ -1,4 +1,5 @@
 //const minimatch = require("minimatch")
+const M = require("./require-from-string");
 
 /**
  * TODO:
@@ -29,10 +30,11 @@ function mkTemplateStrings(env, template) {
     }
     let $ = env.context;
     let T = template.replace(/`/g, '\\`');
-    let argv = env.__context.argv;
+    let $argv = env.__context.argv;
     let $func = env.functions;
-    let $src = env.src;
-    let $type =TYPE_OF($);
+    let $src  = env.src;
+    let $type = TYPE_OF($);
+    let $index = env.__context.$index;
 
     if(Array.isArray($) || $type === "string" || $type === "number" || $type === "boolean") {
         return eval(`\`${T}\``);
@@ -156,8 +158,8 @@ class Section {
             for(let p of this.params) {
                 let os = ('$' == p) ? env.context : env.context[p];
                 // TODO: CHECK os is iterable or NOT
-                for(let o of os) {
-                    env.changeContext(o);
+                for(let index in os) {
+                    env.changeContext(os[index], index);
                     this._eval(rs, env);
                     env.restoreContext();
                 }
@@ -200,7 +202,7 @@ const BASE_HANDLER = {
     },
 
     src(env, content, params) {
-        env.src = JSON.parse(eval(`let $={${content.join('\n')}}; JSON.stringify($);`));
+        env.src = M(`module.exports={${content.join('\n')}}`);
         env.changeContext(env.src);
     }
 }
@@ -213,24 +215,27 @@ class Maple {
         this.functions= {};
         this.root = {};
         this.src = {};
-        this.__context = {stack:[], c:{}, argv:[]};
+        this.__context = {stack:[], c:{}, argv:[], $index:null};
         this.currentSection = Section.createRootNode();
         this.sections.push(this.currentSection);
+        this.$index = null;
     }
 
     get context() {
         return this.__context.c;
     }
 
-    changeContext(ctx) {
+    changeContext(ctx, index=null) {
         this.__context.stack.push(ctx);
         this.__context.c = ctx;
+        this.__context.$index = index;
         //console.log(`[CHANGE CTX +] : CTX = ${JSON.stringify(this.__context.c)} TYPE:${(typeof this.__context.c)}`);
     }
 
     restoreContext() {
         this.__context.stack.pop();
         this.__context.c =  this.__context.stack[this.__context.stack.length - 1];
+        this.__context.$index = null;
         //console.log(`[CHANGE CTX -] : CTX = ${JSON.stringify(this.__context.c)} TYPE:${(typeof this.__context.c)}`);
     }
 
@@ -354,9 +359,8 @@ function readline(file, cb) {
     });
 }
 
-
-
-run_maple("maple/zsh.completion.mp");
+//run_maple("maple/zsh.completion.mp");
+run_maple("maple/orm.mp");
 // let i = Math.sign(-1);
 // console.log(`${i}`);
 // console.log(`${Math.sign(12)}`);
