@@ -4,7 +4,6 @@ var Module = require('module');
 var path = require('path');
 
 module.exports = function requireFromString(code, filename, opts) {
-    console.log(code);
     if (typeof filename === 'object') {
         opts = filename;
         filename = undefined;

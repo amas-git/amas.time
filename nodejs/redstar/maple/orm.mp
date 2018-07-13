@@ -22,7 +22,7 @@ sequlize_type_map: {
     blob:    "Sequelize.BLOB",
     json:    "Sequelize.JSON"
 },
-to: new function() {
+to() {
     return "TO";
 }
 #-------------------------------------------------------------|
@@ -34,11 +34,11 @@ const sequelize = new Sequelize('${dbname}', null, null, {
   // - default ':memory:'
   storage: '${dbpath}'
 });
-${to()}
+
 #-------------------------------------------------------------| @foreach scheme
 const ${$index} = sequelize.define('${$index}', {
 #------------------------------------------| @foreach $
-    ${$.name} : {type: $.type}
+    ${name} : {type: ${type}}
 #------------------------------------------|
 
 });

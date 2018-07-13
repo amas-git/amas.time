@@ -7,6 +7,7 @@ const M = require("./require-from-string");
  * HISTORY:
  *  1. 2018.06.18: Finished Core Design
  * @param text
+ *  2. 如何更加智能的查找keys
  */
 function error(text) {
     console.error(text);
@@ -24,12 +25,13 @@ const TYPE_OF = function(obj) {
     return ({}).toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase()
 }
 
-function mkTemplateStrings(env, template) {
-    function transId(xs) {
+function template(env, template) {
+    function expose(xs) {
         return xs;
     }
+
     let $ = env.context;
-    let T = template.replace(/`/g, '\\`');
+    let $T = template.replace(/`/g, '\\`');
     let $argv = env.__context.argv;
     let $func = env.functions;
     let $src  = env.src;
@@ -37,10 +39,10 @@ function mkTemplateStrings(env, template) {
     let $index = env.__context.$index;
 
     if(Array.isArray($) || $type === "string" || $type === "number" || $type === "boolean") {
-        return eval(`\`${T}\``);
+        return eval(`\`${$T}\``);
     } else {
-        let keys = transId(Object.keys($));
-        return eval(`let {${keys.join(",")}} = $; \`${T}\``);
+        let keys = expose(Object.keys($));
+        return eval(`let {${keys.join(",")}} = $; \`${$T}\``);
     }
 }
 
@@ -144,7 +146,7 @@ class Section {
     }
 
     _eval(rs, env) {
-        Section.push(rs, mkTemplateStrings(env, this.join()));
+        Section.push(rs, template(env, this.join()));
         for (let s of this.sections) {
             Section.push(rs,s.eval(env));
         }
@@ -178,8 +180,8 @@ class Section {
         }
         return rs;
     }
-
-    call(env, argv) {
+    // TODO: rename to apply
+    apply(env, argv) {
         let rs = [];
         env.argv(argv);
         this._eval(rs, env);
@@ -194,7 +196,7 @@ class Section {
 
 const BASE_HANDLER = {
     e(env, content, params) {
-        return mkTemplateStrings(env, content.join('\n'));
+        return template(env, content.join('\n'));
     },
 
     echo(env, content, params) {
@@ -272,7 +274,7 @@ class Maple {
             let s = this.currentSection;
             this.addFunction(fname,(...parms) => {
                 let section = s;
-                return section.call(this, parms);
+                return section.apply(this, parms);
             }, "");
         }
     }
@@ -344,8 +346,8 @@ function run_maple(file) {
 
 }
 
-function linkobj(o) {
-
+function exportkey(o) {
+    
 }
 
 function readline(file, cb) {
@@ -361,6 +363,11 @@ function readline(file, cb) {
 
 //run_maple("maple/zsh.completion.mp");
 run_maple("maple/orm.mp");
+
+function expose(o) {
+    
+}
+
 // let i = Math.sign(-1);
 // console.log(`${i}`);
 // console.log(`${Math.sign(12)}`);
