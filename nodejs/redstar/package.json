@@ -8,6 +8,7 @@
     "koa": "^2.5.1",
     "koa-bodyparser": "^4.2.1",
     "koa-router": "^7.4.0",
+    "lodash": "^4.17.10",
     "minimatch": "^3.0.4",
     "request": "^2.86.0",
     "sequelize": "^4.38.0",

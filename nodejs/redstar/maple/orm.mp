@@ -11,6 +11,7 @@ scheme: {
 
 sequlize_type_map: {
     text:    "Sequelize.TEXT",
+    string:    "Sequelize.TEXT",
     int :    "Sequelize.INTEGER",
     float:   "Sequelize.FLOAT",
     bigint:  "Sequelize.BIGINT",
@@ -38,7 +39,7 @@ const sequelize = new Sequelize('${dbname}', null, null, {
 #-------------------------------------------------------------| @foreach scheme
 const ${$index} = sequelize.define('${$index}', {
 #------------------------------------------| @foreach $
-    ${name} : {type: ${type}}
+    ${name} : {type: ${sequlize_type_map[type]}}
 #------------------------------------------|
 
 });

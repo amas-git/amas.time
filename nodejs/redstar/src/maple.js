@@ -1,5 +1,6 @@
 //const minimatch = require("minimatch")
 const M = require("./require-from-string");
+const _ = require("lodash");
 
 /**
  * TODO:
@@ -26,23 +27,23 @@ const TYPE_OF = function(obj) {
 }
 
 function template(env, template) {
-    function expose(xs) {
+    function expose(o, ...os) {
         return xs;
     }
 
     let $ = env.context;
     let $T = template.replace(/`/g, '\\`');
-    let $argv = env.__context.argv;
-    let $func = env.functions;
-    let $src  = env.src;
-    let $type = TYPE_OF($);
-    let $index = env.__context.$index;
+    let $stack  = env.__context.stack;
+    let $argv   = env.__context.argv;
+    let $func   = env.functions;
+    let $src    = env.src;
+    let $type   = TYPE_OF($);
+    let $index  = env.__context.$index;
 
     if(Array.isArray($) || $type === "string" || $type === "number" || $type === "boolean") {
-        return eval(`\`${$T}\``);
+        return eval(` let {${Object.keys($src).join(',')}} = env.src; \`${$T}\``);
     } else {
-        let keys = expose(Object.keys($));
-        return eval(`let {${keys.join(",")}} = $; \`${$T}\``);
+        return eval(`{ let {${Object.keys($src).join(',')}} = env.src; {let {${Object.keys($).join(",")}} = $; \`${$T}\`}}`);
     }
 }
 
@@ -346,10 +347,6 @@ function run_maple(file) {
 
 }
 
-function exportkey(o) {
-    
-}
-
 function readline(file, cb) {
     let num = 0;
     require('readline').createInterface({
@@ -363,10 +360,6 @@ function readline(file, cb) {
 
 //run_maple("maple/zsh.completion.mp");
 run_maple("maple/orm.mp");
-
-function expose(o) {
-    
-}
 
 // let i = Math.sign(-1);
 // console.log(`${i}`);
