@@ -1,5 +1,5 @@
 //const minimatch = require("minimatch")
-const M = require("./require-from-string");
+const M = require("./M");
 const _ = require("lodash");
 
 /**
@@ -9,21 +9,11 @@ const _ = require("lodash");
  *  1. 2018.06.18: Finished Core Design
  * @param text
  *  2. 如何更加智能的查找keys
+ *  3. 性能统计: eval求值时间，次数，产生的字符数量等等
  */
-function error(text) {
-    console.error(text);
-}
-
-function E(template) {
-    return eval('`' + template.replace(/`/g, '\\`') + '`');
-}
-
-function isIterable(o) {
-    return o == null ? false : typeof o[Symbol.iterator] === 'function';
-}
 
 const TYPE_OF = function(obj) {
-    return ({}).toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase()
+    return ({}).toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase();
 }
 
 function template(env, template) {
@@ -57,6 +47,7 @@ function template(env, template) {
     let $type   = TYPE_OF($);
     let $index  = env.__context.$index;
     return eval(expose($stack, $T));
+    //return eval.call(env, expose($stack, $T));
 }
 
 
@@ -125,6 +116,7 @@ class Section {
         this.sections = [];
         this.contents = [];
         this.params   = [];
+        this.sep      = "\n";
         this.__join   = null;
     }
 
@@ -150,6 +142,9 @@ class Section {
     }
 
     static push(rs, xs) {
+        if(!xs){
+            return;
+        }
         if(Array.isArray(xs)) {
             if (xs.length) { rs.push(...xs); }
         } else {
@@ -159,7 +154,7 @@ class Section {
     }
 
     _eval(rs, env) {
-        Section.push(rs, template(env, this.join()));
+        Section.push(rs, template(env, this.join(this.sep)));
         for (let s of this.sections) {
             Section.push(rs,s.eval(env));
         }
@@ -170,21 +165,18 @@ class Section {
         if(this.isPart() && this.test(env)) {
             this._eval(rs, env);
         } else if(this.isLoop()) {
-            for(let p of this.params) {
-                let os = ('$' == p) ? env.context : env.context[p];
-                // TODO: CHECK os is iterable or NOT
-                for(let index in os) {
-                    env.changeContext(os[index], index);
-                    this._eval(rs, env);
-                    env.restoreContext();
-                }
+            let o    = this.params[0] || "$";
+            // this.sep = this.params.length > 1 ? this.params[1] : "\n";
+            let os   = ('$' == this.params[0]) ? env.context : env.context[o];
 
+            for (let index in os) {
+                env.changeContext(os[index], index);
+                this._eval(rs, env);
+                env.restoreContext();
             }
         } else if(this.isNorm()) {
             let r = env.handlers[this.name](env, this.contents, this.params);
-            if(r) {
-                Section.push(rs, r);
-            }
+            Section.push(rs, r);
         } else if(this.isRoot()) {
             this._eval(rs, env);
         } else if(this.isFunc()) {
@@ -217,19 +209,29 @@ const BASE_HANDLER = {
     },
 
     src(env, content, params) {
-        env.src = M(`module.exports={${content.join('\n')}}`);
-        env.changeContext(env.src);
+        let name = params[0] || "main";
+        env.src[name] = M(`module.exports={${content.join('\n')}}`);
+        env.changeContext(env.src.main);
+    },
+
+    mod(env, content, params) {
+        let name = params[0] || "mod";
+        env.src[name] = M(`${content.join('\n')}`);
+        env.changeContext(env.src.main);
+    },
+    debug(env, content, params) {
+        console.log(JSON.stringify(env.sections, null, 2));
     }
 };
 
 class Maple {
     constructor(file) {
-        this.file = file;
-        this.handlers = BASE_HANDLER;
-        this.sections = [];
-        this.functions= {};
-        this.root = {};
-        this.src = {};
+        this.file      = file;
+        this.src       = {};
+        this.root      = {};
+        this.handlers  = BASE_HANDLER;
+        this.sections  = [];
+        this.functions = {};
         this.__context = {stack:[], c:{}, argv:[], $index:null};
         this.currentSection = Section.createRootNode();
         this.sections.push(this.currentSection);
@@ -240,10 +242,11 @@ class Maple {
         return this.__context.c;
     }
 
-    changeContext(ctx, index=null) {
+    changeContext(ctx, index=null, last=false) {
         this.__context.stack.push(ctx);
         this.__context.c = ctx;
         this.__context.$index = index;
+        this.__context.$last  = last;
         //console.log(`[CHANGE CTX +] : CTX = ${JSON.stringify(this.__context.c)} TYPE:${(typeof this.__context.c)}`);
     }
 
@@ -251,6 +254,7 @@ class Maple {
         this.__context.stack.pop();
         this.__context.c =  this.__context.stack[this.__context.stack.length - 1];
         this.__context.$index = null;
+        this.__context.$last  = false;
         //console.log(`[CHANGE CTX -] : CTX = ${JSON.stringify(this.__context.c)} TYPE:${(typeof this.__context.c)}`);
     }
 
@@ -454,3 +458,7 @@ run_maple("maple/orm.mp");
 //         }
 //     }
 // }
+//
+// const aaa = 1;
+// const b = {};
+// console.log(eval.call(b, `${aaa}`));

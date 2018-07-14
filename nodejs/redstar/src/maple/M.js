@@ -32,3 +32,17 @@ module.exports = function requireFromString(code, filename, opts) {
 
     return exports;
 };
+
+
+// function error(text) {
+//     console.error(text);
+// }
+//
+// function E(template) {
+//     return eval('`' + template.replace(/`/g, '\\`') + '`');
+// }
+//
+// function isIterable(o) {
+//     return o == null ? false : typeof o[Symbol.iterator] === 'function';
+// }
+//
