@@ -27,24 +27,36 @@ const TYPE_OF = function(obj) {
 }
 
 function template(env, template) {
-    function expose(o, ...os) {
-        return xs;
+    function convertId(keys) {
+        return keys.map((key)=>{
+            if(key.match(/\d+/)) {
+                return `$${key}`;
+            }
+            // TODO: support more convertion
+            // TODO: when the array keys is large, only keep 9 id
+            return key;
+        });
+    }
+    function expose($stack, $T) {
+        let rs = [];
+        $stack.forEach((e,i) => {
+            let ids = convertId(Object.keys($stack[i]));
+            rs.push(`let {${ids.join(',')}} = $stack[${i}];{`);
+        });
+        rs.push(`\`${$T}\`;`);
+        rs.push("}".repeat($stack.length));
+        return rs.join("");
     }
 
-    let $ = env.context;
-    let $T = template.replace(/`/g, '\\`');
+    let $       = env.context;
+    let $T      = template.replace(/`/g, '\\`');
     let $stack  = env.__context.stack;
     let $argv   = env.__context.argv;
     let $func   = env.functions;
     let $src    = env.src;
     let $type   = TYPE_OF($);
     let $index  = env.__context.$index;
-
-    if(Array.isArray($) || $type === "string" || $type === "number" || $type === "boolean") {
-        return eval(` let {${Object.keys($src).join(',')}} = env.src; \`${$T}\``);
-    } else {
-        return eval(`{ let {${Object.keys($src).join(',')}} = env.src; {let {${Object.keys($).join(",")}} = $; \`${$T}\`}}`);
-    }
+    return eval(expose($stack, $T));
 }
 
 
@@ -123,7 +135,7 @@ class Section {
     isLoop() { return this.type === SectionType.LOOP; }
 
     test(env) {
-        let argv = env.__context.argv;
+        let $argv = env.__context.argv;
         if(this.params.length === 0 || !this.params[0] || eval(`let $=env.context; ${this.params[0]}`)) {
             return true;
         }
@@ -344,7 +356,6 @@ function run_maple(file) {
         maple.addContent(line);
 
     });
-
 }
 
 function readline(file, cb) {
@@ -359,7 +370,7 @@ function readline(file, cb) {
 }
 
 //run_maple("maple/zsh.completion.mp");
-run_maple("maple/orm.mp");
+run_maple("maple/hello.mp");
 
 // let i = Math.sign(-1);
 // console.log(`${i}`);
