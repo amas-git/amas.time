@@ -205,7 +205,7 @@ class Section {
         return new Section("root",SectionType.ROOT,2048);
     }
 
-};
+}
 
 const BASE_HANDLER = {
     e(env, content, params) {
@@ -220,7 +220,7 @@ const BASE_HANDLER = {
         env.src = M(`module.exports={${content.join('\n')}}`);
         env.changeContext(env.src);
     }
-}
+};
 
 class Maple {
     constructor(file) {
@@ -370,7 +370,9 @@ function readline(file, cb) {
 }
 
 //run_maple("maple/zsh.completion.mp");
-run_maple("maple/hello.mp");
+//run_maple("maple/hello.mp");
+
+run_maple("maple/orm.mp");
 
 // let i = Math.sign(-1);
 // console.log(`${i}`);
@@ -378,6 +380,8 @@ run_maple("maple/hello.mp");
 // xs=[[1,2,3],4,5,6,7];
 // let [[x],] = xs;
 // console.log(x);
+
+
 
 //console.log([1,2,3].reduce((acc, n) => (acc+n) , 0));
 //

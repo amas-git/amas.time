@@ -35,7 +35,6 @@ const sequelize = new Sequelize('${dbname}', null, null, {
   // - default ':memory:'
   storage: '${dbpath}'
 });
-
 #-------------------------------------------------------------| @foreach scheme
 const ${$index} = sequelize.define('${$index}', {
 #------------------------------------------| @foreach $
