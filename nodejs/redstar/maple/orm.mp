@@ -37,8 +37,8 @@ const sequelize = new Sequelize('${dbname}', null, null, {
 });
 
 #-------------------------------------------------------------| @foreach scheme
-const ${$index} = sequelize.define('${$index}', {
+const ${$foreach.index} = sequelize.define('${$foreach.index}', {
 #------------------------------------------| @foreach $
-    ${name} : {type: ${sequlize_type_map[type]}}
+    ${name} : {type: ${sequlize_type_map[type]}}${$foreach.last ?"":","}
 #------------------------------------------|
 });

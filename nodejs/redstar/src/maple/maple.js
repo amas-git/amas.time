@@ -38,14 +38,13 @@ function template(env, template) {
         return rs.join("");
     }
 
-    let $       = env.context;
-    let $T      = template.replace(/`/g, '\\`');
-    let $stack  = env.__context.stack;
-    let $argv   = env.__context.argv;
-    let $func   = env.functions;
-    let $src    = env.src;
-    let $type   = TYPE_OF($);
-    let $index  = env.__context.$index;
+    let $        = env.context;
+    let $T       = template.replace(/`/g, '\\`');
+    let $stack   = env.__context.stack;
+    let $argv    = env.__context.argv;
+    let $func    = env.functions;
+    let $src     = env.src;
+    let $foreach = env.__context.foreach;
     return eval(expose($stack, $T));
     //return eval.call(env, expose($stack, $T));
 }
@@ -170,7 +169,7 @@ class Section {
             let os   = ('$' == this.params[0]) ? env.context : env.context[o];
 
             for (let index in os) {
-                env.changeContext(os[index], index);
+                env.changeContext(os[index], Maple.createForeachStatus(index, os));
                 this._eval(rs, env);
                 env.restoreContext();
             }
@@ -232,7 +231,7 @@ class Maple {
         this.handlers  = BASE_HANDLER;
         this.sections  = [];
         this.functions = {};
-        this.__context = {stack:[], c:{}, argv:[], $index:null};
+        this.__context = {stack:[], c:{}, argv:[], foreach: { /*first: false, last: false, index: null*/ }};
         this.currentSection = Section.createRootNode();
         this.sections.push(this.currentSection);
         this.$index = null;
@@ -242,19 +241,17 @@ class Maple {
         return this.__context.c;
     }
 
-    changeContext(ctx, index=null, last=false) {
+    changeContext(ctx, foreach={}) {
         this.__context.stack.push(ctx);
         this.__context.c = ctx;
-        this.__context.$index = index;
-        this.__context.$last  = last;
+        this.__context.foreach = foreach;
         //console.log(`[CHANGE CTX +] : CTX = ${JSON.stringify(this.__context.c)} TYPE:${(typeof this.__context.c)}`);
     }
 
     restoreContext() {
         this.__context.stack.pop();
         this.__context.c =  this.__context.stack[this.__context.stack.length - 1];
-        this.__context.$index = null;
-        this.__context.$last  = false;
+        this.__context.foreach = {};
         //console.log(`[CHANGE CTX -] : CTX = ${JSON.stringify(this.__context.c)} TYPE:${(typeof this.__context.c)}`);
     }
 
@@ -325,6 +322,18 @@ class Maple {
 
     print() {
         console.log(JSON.stringify(this,null,4));
+    }
+
+    static createForeachStatus(keys, object) {
+        let first = false;
+        let last  = false;
+        let index = keys;
+        if(_.isArray(object)) {
+            let i = parseInt(keys);
+            first = (i === 0);
+            last  = (i === object.length - 1);
+        }
+        return {first: first, last: last, index: index};
     }
 }
 
