@@ -15,7 +15,7 @@ const _ = require("lodash");
  *  6. 用迭代代替mktree|printrs递归方式
  *  7. 提供一些打印上下文信息的调试函数，方便定位问题
  *  FIXME:
- *  
+ *
  */
 
 const TYPE_OF = function(obj) {

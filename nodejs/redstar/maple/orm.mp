@@ -1,10 +1,10 @@
 #-------------------------------------------------------------| @src
 dbname: "dbname",
-dbpath: "dbname",
+dbpath: "test.db",
 scheme: {
     peoples: [
         {name:"name", type:"string"},
-        {name:"id",   type:"int", primaryKey: true},
+        {name:"ids",   type:"int", primaryKey: true},
         {name:"age",  type:"int"},
     ]
 }
@@ -43,7 +43,8 @@ const sequelize = new Sequelize('${dbname}', null, null, {
 
   // the storage engine for sqlite
   // - default ':memory:'
-  storage: '${dbpath}'
+  storage: '${dbpath}',
+  operatorsAliases: false
 });
 #-------------------------------------------------------------| @foreach scheme
 const ${$foreach.key} = sequelize.define('${$foreach.key}', {
@@ -52,9 +53,16 @@ const ${$foreach.key} = sequelize.define('${$foreach.key}', {
 #------------------------------------------|
 });
 
-
 async function save_${$foreach.key}(data) {
-    Coins.bulkCreate(data, { validate: true })
+    ${$foreach.key}.bulkCreate(data, { validate: true })
         .catch(e => { console.error(e.stack)});
 }
+
+async function get_${$foreach.key}() {
+    let rs = await ${$foreach.key}.findAll({where: {symbol: s}});
+    return rs;
+}
 #-------------------------------------------------------------|
+(async () => {
+    sequelize.sync(); // This will create table
+})();
