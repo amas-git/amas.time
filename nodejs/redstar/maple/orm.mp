@@ -4,7 +4,7 @@ dbpath: "dbname",
 scheme: {
     peoples: [
         {name:"name", type:"string"},
-        {name:"id",   type:"int"},
+        {name:"id",   type:"int", primaryKey: true},
         {name:"age",  type:"int"},
     ]
 }
@@ -51,3 +51,10 @@ const ${$foreach.key} = sequelize.define('${$foreach.key}', {
     ${name} : {type: ${$mod.SEQ.TYPE(type)}}
 #------------------------------------------|
 });
+
+
+async function save_${$foreach.key}(data) {
+    Coins.bulkCreate(data, { validate: true })
+        .catch(e => { console.error(e.stack)});
+}
+#-------------------------------------------------------------|

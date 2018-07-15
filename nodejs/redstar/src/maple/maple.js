@@ -13,6 +13,9 @@ const _ = require("lodash");
  *  4. 实现pipe
  *  5. 实现IO section
  *  6. 用迭代代替mktree|printrs递归方式
+ *  7. 提供一些打印上下文信息的调试函数，方便定位问题
+ *  FIXME:
+ *  
  */
 
 const TYPE_OF = function(obj) {
@@ -39,8 +42,8 @@ function template(env, template) {
     function expose($stack, $T) {
         let rs = [];
         $stack.forEach((e,i) => {
-            let ids = convertId(Object.keys($stack[i]));
-            rs.push(`let {${ids.join(',')}} = $stack[${i}];{`);
+            let ids = convertId(Object.keys($stack[i].c));
+            rs.push(`let {${ids.join(',')}} = $stack[${i}].c;{`);
         });
         rs.push(`\`${$T}\`;`);
         rs.push("}".repeat($stack.length));
@@ -220,7 +223,7 @@ class Maple {
         this.handlers  = BASE_HANDLER;
         this.sections  = [];
         this.functions = {};
-        this.__context = {stack:[], c:{}, argv:[], foreach: { /*first: false, last: false, key: null*/ }};
+        this.__context = {stack:[/*{c:{}, foreach:{}}*/], c:{}, argv:[]};
         this.currentSection = Section.createRootNode();
         this.sections.push(this.currentSection);
     }
@@ -230,7 +233,7 @@ class Maple {
     }
 
     changeContext(ctx, foreach={}) {
-        this.__context.stack.push(ctx);
+        this.__context.stack.push({c:ctx, foreach:foreach});
         this.__context.c = ctx;
         this.__context.foreach = foreach;
         //console.log(`[CHANGE CTX +] : CTX = ${JSON.stringify(this.__context.c)} TYPE:${(typeof this.__context.c)}`);
@@ -238,8 +241,9 @@ class Maple {
 
     restoreContext() {
         this.__context.stack.pop();
-        this.__context.c =  this.__context.stack[this.__context.stack.length - 1];
-        this.__context.foreach = {};
+        let {c, foreach} =  this.__context.stack[this.__context.stack.length - 1];
+        this.__context.c = c;
+        this.__context.foreach = foreach;
         //console.log(`[CHANGE CTX -] : CTX = ${JSON.stringify(this.__context.c)} TYPE:${(typeof this.__context.c)}`);
     }
 
