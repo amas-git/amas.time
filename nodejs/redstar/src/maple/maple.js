@@ -10,10 +10,19 @@ const _ = require("lodash");
  * @param text
  *  2. 如何更加智能的查找keys
  *  3. 性能统计: eval求值时间，次数，产生的字符数量等等
+ *  4. 实现pipe
+ *  5. 实现IO section
+ *  6. 用迭代代替mktree|printrs递归方式
  */
 
 const TYPE_OF = function(obj) {
     return ({}).toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase();
+};
+
+function print(o) {
+    if(o) {
+        console.error(JSON.stringify(o, null, 2));
+    }
 }
 
 function template(env, template) {
@@ -44,6 +53,7 @@ function template(env, template) {
     let $argv    = env.__context.argv;
     let $func    = env.functions;
     let $src     = env.src;
+    let $mod     = env.mod;
     let $foreach = env.__context.foreach;
     return eval(expose($stack, $T));
     //return eval.call(env, expose($stack, $T));
@@ -69,37 +79,12 @@ function mktree(xs, root=xs[0], level="level", child='nodes') {
     return root;
 }
 
-/**
- * 遍历指定的objects
- * @param o
- * @param f
- * @param context
- */
-function walk(o, f, context = {path:[], level:0}) {
-    if((o === null) || Object.keys(o).length === 0 || (typeof o === 'string') || (typeof o === 'number')) {
-        return;
-    }
-
-    for(let k in o) {
-        let ctx = {path: [...context.path, k], level: context.level+1};
-
-        if(f) {
-            f(ctx, k, o[k]);
-        }
-        walk(ctx, o[k], f);
-    }
-}
-
-const SectionType = {
-    ROOT: 'root',
-    FUNC: 'func',
-    TEXT: 'text',
-    NORM: 'norm',
-    PART: 'part',
-    LOOP: 'loop'
-};
-
-Object.freeze(SectionType);
+const SectionType = Object.freeze({
+    FUNC: '@func',
+    NORM: '@norm',
+    PART: '@part',
+    LOOP: '@loop'
+});
 
 class Section {
     /**
@@ -109,9 +94,10 @@ class Section {
      * @param level section level
      */
     constructor(name, type, level) {
-        this.name = name;
-        this.type  = type;
-        this.level = level;
+        this.id       = 0;
+        this.name     = name;
+        this.type     = type;
+        this.level    = level;
         this.sections = [];
         this.contents = [];
         this.params   = [];
@@ -119,7 +105,6 @@ class Section {
         this.__join   = null;
     }
 
-    isRoot() { return this.type === SectionType.ROOT; }
     isFunc() { return this.type === SectionType.FUNC; }
     isNorm() { return this.type === SectionType.NORM; }
     isPart() { return this.type === SectionType.PART; }
@@ -140,50 +125,52 @@ class Section {
         return this.__join;
     }
 
-    static push(rs, xs) {
-        if(!xs){
+    static issue(section, rs, xs) {
+        if(_.isEmpty(xs)){
             return;
         }
-        if(Array.isArray(xs)) {
-            if (xs.length) { rs.push(...xs); }
-        } else {
-            if (xs) {rs.push(xs);}
-        }
+
+        rs.rs.push(xs);
         return rs;
     }
 
+    'eval@loop'(rs, env) {
+        let o    = this.params[0] || "$";
+        let os   = ('$' == this.params[0]) ? env.context : env.context[o];
+
+        for (let key in os) {
+            env.changeContext(os[key], Maple.createForeachStatus(key, os));
+            this._eval(rs, env);
+            env.restoreContext();
+        }
+    }
+
+    'eval@part'(rs, env) {
+        if(this.test(env)) {
+            this._eval(rs, env);
+        }
+    }
+
+    'eval@norm'(rs, env) {
+        let r = env.handlers[this.name](env, this.contents, this.params);
+        Section.issue(this, rs, r);
+    }
+
+    'eval@func'(rs, env) { /* NOP*/ }
+
     _eval(rs, env) {
-        Section.push(rs, template(env, this.join(this.sep)));
+        Section.issue(this, rs, template(env, this.join(this.sep)));
         for (let s of this.sections) {
-            Section.push(rs,s.eval(env));
+            Section.issue(s, rs, s.eval(env, rs));
         }
     }
 
     eval(env={}) {
-        let rs = [];
-        if(this.isPart() && this.test(env)) {
-            this._eval(rs, env);
-        } else if(this.isLoop()) {
-            let o    = this.params[0] || "$";
-            // this.sep = this.params.length > 1 ? this.params[1] : "\n";
-            let os   = ('$' == this.params[0]) ? env.context : env.context[o];
-
-            for (let index in os) {
-                env.changeContext(os[index], Maple.createForeachStatus(index, os));
-                this._eval(rs, env);
-                env.restoreContext();
-            }
-        } else if(this.isNorm()) {
-            let r = env.handlers[this.name](env, this.contents, this.params);
-            Section.push(rs, r);
-        } else if(this.isRoot()) {
-            this._eval(rs, env);
-        } else if(this.isFunc()) {
-            //TODO: 实现函数的功能
-            //console.log("--------------?" + this.params)
-        }
+        let rs = {id:this.id, rs:[], sep: this.sep};
+        this[`eval${this.type}`](rs, env);
         return rs;
     }
+
     // TODO: rename to apply
     apply(env, argv) {
         let rs = [];
@@ -193,7 +180,7 @@ class Section {
     }
 
     static createRootNode() {
-        return new Section("root",SectionType.ROOT,2048);
+        return new Section("root",SectionType.PART,2048);
     }
 
 }
@@ -215,8 +202,8 @@ const BASE_HANDLER = {
 
     mod(env, content, params) {
         let name = params[0] || "mod";
-        env.src[name] = M(`${content.join('\n')}`);
-        env.changeContext(env.src.main);
+        env.mod[name] = M(`${content.join('\n')}`);
+        //env.changeContext(env.src.main);
     },
     debug(env, content, params) {
         console.log(JSON.stringify(env.sections, null, 2));
@@ -225,16 +212,17 @@ const BASE_HANDLER = {
 
 class Maple {
     constructor(file) {
+        this.seq       = 0;
         this.file      = file;
-        this.src       = {};
+        this.src       = {};    // data source
+        this.mod       = {};    // modules
         this.root      = {};
         this.handlers  = BASE_HANDLER;
         this.sections  = [];
         this.functions = {};
-        this.__context = {stack:[], c:{}, argv:[], foreach: { /*first: false, last: false, index: null*/ }};
+        this.__context = {stack:[], c:{}, argv:[], foreach: { /*first: false, last: false, key: null*/ }};
         this.currentSection = Section.createRootNode();
         this.sections.push(this.currentSection);
-        this.$index = null;
     }
 
     get context() {
@@ -255,10 +243,6 @@ class Maple {
         //console.log(`[CHANGE CTX -] : CTX = ${JSON.stringify(this.__context.c)} TYPE:${(typeof this.__context.c)}`);
     }
 
-    toString() {
-        return `MAPLE:${this.file}`;
-    }
-
     argv(argv) {
         this.__context.argv = argv;
     }
@@ -266,20 +250,18 @@ class Maple {
     addSection(name, params, level=0) {
         let type = SectionType.TEXT;
         if(!name) {
-            type = SectionType.PART;
-            name = "@part";
+            name = type = SectionType.PART;
         } else if("foreach" == name) {
-            type = SectionType.LOOP;
-            name = "@loop";
+            name = type = SectionType.LOOP;
         } else if("func" == name) {
-            type = SectionType.FUNC;
-            name = "@func";
+            name = SectionType.FUNC;
         } else {
             type = SectionType.NORM;
         }
 
 
         this.currentSection = new Section(name, type, level);
+        this.currentSection.id = this.seq++;
         this.currentSection.params = params;
         this.sections.push(this.currentSection);
 
@@ -290,6 +272,11 @@ class Maple {
                 let section = s;
                 return section.apply(this, parms);
             }, "");
+        } else if(this.currentSection.isLoop()) {
+            let sep = params.length > 1 ? params[1] : null;
+            if(sep) {
+                this.currentSection.sep = sep;
+            }
         }
     }
 
@@ -317,23 +304,38 @@ class Maple {
 
     eval() {
         let rs = this.root.eval(this);
-        console.error(rs.join("\n"));
+        let text = Maple.printrs(rs);
+        console.error(text);
+        return rs;
     }
 
-    print() {
-        console.log(JSON.stringify(this,null,4));
+    static printrs(result) {
+        let text = [];
+        let {id, sep, rs} = result;
+        for(let r of rs) {
+            if(_.isString(r)) {
+                //console.log(`'${r}'`);
+                text.push(r);
+            } else {
+                if(_.isEmpty(r.rs)) {
+                    continue;
+                }
+                text.push(Maple.printrs(r));
+            }
+        }
+        return text.join(sep==="\n" ? sep : sep+"\n");
     }
 
     static createForeachStatus(keys, object) {
         let first = false;
         let last  = false;
-        let index = keys;
+        let key   = keys;
         if(_.isArray(object)) {
             let i = parseInt(keys);
             first = (i === 0);
             last  = (i === object.length - 1);
         }
-        return {first: first, last: last, index: index};
+        return {first: first, last: last, key: key};
     }
 }
 
@@ -384,7 +386,7 @@ function readline(file, cb) {
 
 //run_maple("maple/zsh.completion.mp");
 //run_maple("maple/hello.mp");
-
+//
 run_maple("maple/orm.mp");
 
 // let i = Math.sign(-1);

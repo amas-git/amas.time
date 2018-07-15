@@ -7,9 +7,9 @@ scheme: {
         {name:"id",   type:"int"},
         {name:"age",  type:"int"},
     ]
-},
-
-sequlize_type_map: {
+}
+#-------------------------------------------------------------| @mod SEQ
+const sequlize_type_map = {
     text:    "Sequelize.TEXT",
     string:    "Sequelize.TEXT",
     int :    "Sequelize.INTEGER",
@@ -22,9 +22,19 @@ sequlize_type_map: {
     bool:    "Sequelize.BOOLEAN",
     blob:    "Sequelize.BLOB",
     json:    "Sequelize.JSON"
-},
-to() {
-    return "TO";
+}
+
+function TYPE(type) {
+    return sequlize_type_map[type];
+}
+
+function hello() {
+    return "HELLO";
+}
+
+module.exports = {
+    TYPE,
+    hello
 }
 #-------------------------------------------------------------|
 const Sequelize = require("sequelize");
@@ -35,10 +45,9 @@ const sequelize = new Sequelize('${dbname}', null, null, {
   // - default ':memory:'
   storage: '${dbpath}'
 });
-
 #-------------------------------------------------------------| @foreach scheme
-const ${$foreach.index} = sequelize.define('${$foreach.index}', {
-#------------------------------------------| @foreach $
-    ${name} : {type: ${sequlize_type_map[type]}}${$foreach.last ?"":","}
+const ${$foreach.key} = sequelize.define('${$foreach.key}', {
+#------------------------------------------| @foreach $ ,
+    ${name} : {type: ${$mod.SEQ.TYPE(type)}}
 #------------------------------------------|
 });
