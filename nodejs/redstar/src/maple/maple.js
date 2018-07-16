@@ -133,7 +133,7 @@ class Section {
                 r = false;
             }
             //console.log(`${$expr} -> ${r}`);
-            return r;
+            return (r) ? true : false;
         }
     }
 

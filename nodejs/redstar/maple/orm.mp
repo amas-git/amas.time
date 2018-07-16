@@ -5,7 +5,7 @@ scheme: {
     peoples: [
         {name:"name", type:"string", primaryKey:true},
         {name:"ids",   type:"int", primaryKey: true},
-        {name:"age",  type:"int"},
+        {name:"age",  type:"int", unique: true},
     ]
 }
 #-------------------------------------------------------------| @mod SEQ
@@ -51,28 +51,28 @@ const sequelize = new Sequelize('${dbname}', null, null, {
 const ${$foreach.key} = sequelize.define('${$foreach.key}', {
 #------------------------------------------| @foreach $
     ${name} : {
-        type: ${$mod.SEQ.TYPE(type)},
+        type: ${$mod.SEQ.TYPE(type)}
 #--------------------------| primaryKey
-        primaryKey: true,
+        ，primaryKey: true
 #--------------------------| defaultValue
-        defaultValue: false,
+        ，defaultValue: false
 #--------------------------| autoIncrement
-        autoIncrement: true,
+        ，autoIncrement: true
 #--------------------------| unique
-        unique: 'compositeIndex'
+        ，unique: 'compositeIndex'
 #--------------------------| allowNull
-        allowNull: false,
+        ，allowNull: false
 #--------------------------|
     }
 #------------------------------------------|
 }, {
-    timestamps: false,      // 禁止自动创建createAt和updateAt属性
-    underscored: true,      // 禁止用驼峰法命名
-    freezeTableName:  true, // 是否禁止修改表名
-    tableName:              // 表名
-    createdAt: false,
-    updatedAt: 'updateTimestamp',
-    deletedAt: 'destroyTime',
+    timestamps:  false,      // 禁止自动创建createAt和updateAt属性
+    underscored: true,      // 使用下划线命名方法
+//    freezeTableName:  true, // 是否禁止修改表名
+//    tableName:              // 表名
+//    createdAt: false,
+//    updatedAt: 'updateTimestamp',
+//    deletedAt: 'destroyTime',
 });
 
 async function save_${$foreach.key}(data) {
