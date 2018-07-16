@@ -3,7 +3,7 @@ dbname: "dbname",
 dbpath: "test.db",
 scheme: {
     peoples: [
-        {name:"name", type:"string"},
+        {name:"name", type:"string", primaryKey:true},
         {name:"ids",   type:"int", primaryKey: true},
         {name:"age",  type:"int"},
     ]
@@ -38,6 +38,7 @@ module.exports = {
 }
 #-------------------------------------------------------------|
 const Sequelize = require("sequelize");
+
 const sequelize = new Sequelize('${dbname}', null, null, {
   dialect: 'sqlite',
 
@@ -48,9 +49,30 @@ const sequelize = new Sequelize('${dbname}', null, null, {
 });
 #-------------------------------------------------------------| @foreach scheme
 const ${$foreach.key} = sequelize.define('${$foreach.key}', {
-#------------------------------------------| @foreach $ ,
-    ${name} : {type: ${$mod.SEQ.TYPE(type)}}
+#------------------------------------------| @foreach $
+    ${name} : {
+        type: ${$mod.SEQ.TYPE(type)},
+#--------------------------| primaryKey
+        primaryKey: true,
+#--------------------------| defaultValue
+        defaultValue: false,
+#--------------------------| autoIncrement
+        autoIncrement: true,
+#--------------------------| unique
+        unique: 'compositeIndex'
+#--------------------------| allowNull
+        allowNull: false,
+#--------------------------|
+    }
 #------------------------------------------|
+}, {
+    timestamps: false,      // 禁止自动创建createAt和updateAt属性
+    underscored: true,      // 禁止用驼峰法命名
+    freezeTableName:  true, // 是否禁止修改表名
+    tableName:              // 表名
+    createdAt: false,
+    updatedAt: 'updateTimestamp',
+    deletedAt: 'destroyTime',
 });
 
 async function save_${$foreach.key}(data) {
@@ -62,7 +84,27 @@ async function get_${$foreach.key}() {
     let rs = await ${$foreach.key}.findAll({where: {symbol: s}});
     return rs;
 }
+
+// 类级别的方法
+${$foreach.key}.classLevelMethod = function() {
+  return 'hello';
+};
+
+// 实例级别的方法
+${$foreach.key}.instanceLevelMethod = function() {
+  return 'hello';
+};
+
+#-------------------------------------------------------------|
+// 将模型定义保存到单独的文件中
+const Project = sequelize.import(__dirname + "/path/to/models/project")
+
 #-------------------------------------------------------------|
 (async () => {
     sequelize.sync(); // This will create table
 })();
+
+
+module.exports = (sequelize, DataTypes) => {
+    return ${$foreach.key};
+}

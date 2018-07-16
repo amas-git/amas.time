@@ -28,7 +28,12 @@ function print(o) {
     }
 }
 
-function template(env, template) {
+/**
+ * @param $stack object array
+ * @param $code code to evaluated under the given stack
+ * @returns {string} result
+ */
+function expose($stack, $code) {
     function convertId(keys) {
         return keys.map((key)=>{
             if(key.match(/\d+/)) {
@@ -39,17 +44,18 @@ function template(env, template) {
             return key;
         });
     }
-    function expose($stack, $T) {
-        let rs = [];
-        $stack.forEach((e,i) => {
-            let ids = convertId(Object.keys($stack[i].c));
-            rs.push(`let {${ids.join(',')}} = $stack[${i}].c;{`);
-        });
-        rs.push(`\`${$T}\`;`);
-        rs.push("}".repeat($stack.length));
-        return rs.join("");
-    }
+    let rs = [];
+    $stack.forEach((e,i) => {
+        let ids = convertId(Object.keys($stack[i].c));
+        rs.push(`let {${ids.join(',')}} = $stack[${i}].c;{`);
+    });
+    rs.push($code);
+    rs.push("}".repeat($stack.length));
+    return rs.join("");
+}
 
+
+function template(env, template) {
     let $        = env.context;
     let $T       = template.replace(/`/g, '\\`');
     let $stack   = env.__context.stack;
@@ -57,9 +63,9 @@ function template(env, template) {
     let $func    = env.functions;
     let $src     = env.src;
     let $mod     = env.mod;
+    let $var     = env.var;
     let $foreach = env.__context.foreach;
-    return eval(expose($stack, $T));
-    //return eval.call(env, expose($stack, $T));
+    return eval(expose($stack,`\`${$T}\`;`));
 }
 
 
@@ -115,10 +121,20 @@ class Section {
 
     test(env) {
         let $argv = env.__context.argv;
-        if(this.params.length === 0 || !this.params[0] || eval(`let $=env.context; ${this.params[0]}`)) {
+        let $expr = this.params.join("").trim();
+        if(_.isEmpty($expr)) {
             return true;
+        } else {
+            let $stack = env.__context.stack;
+            let r = false;
+            try {
+                r = eval(expose($stack, $expr));
+            } catch (e) {
+                r = false;
+            }
+            //console.log(`${$expr} -> ${r}`);
+            return r;
         }
-        return  false;
     }
 
     join(c='\n') {
@@ -219,6 +235,7 @@ class Maple {
         this.file      = file;
         this.src       = {};    // data source
         this.mod       = {};    // modules
+        this.var       = {};    // 缓存状态
         this.root      = {};
         this.handlers  = BASE_HANDLER;
         this.sections  = [];
@@ -392,7 +409,6 @@ function readline(file, cb) {
 //run_maple("maple/hello.mp");
 //
 run_maple("maple/orm.mp");
-
 // let i = Math.sign(-1);
 // console.log(`${i}`);
 // console.log(`${Math.sign(12)}`);
