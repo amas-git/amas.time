@@ -1,10 +1,31 @@
 #--------------------------------------------------------------------------| @src
-cmd: "vue",
+cmd: "hexo",
 ops: [
-    {name: "v", desc:"verbose mode"},
-    {name: "h", desc:"show help message"}
+    {name: "-config", desc:"Specify config file instead of using _config.yml"},
+    {name: "-debug",  desc:"Display all verbose messages in the terminal"},
+    {name: "-silent", desc:"Hide output on console"},
+    {name: "-draft",  desc:"Display draft posts"},
+    {name: "-safe",   desc:"Disable all plugins and scripts"},
+    {name: "-cwd",    desc:"Specify the CWD"}
 ],
 // 字命令
+commands: [
+    {name: "clean",     desc: "Remove generated files and cache"},
+    {name: "config",    desc: "Get or set configurations"},
+    {name: "generate",  desc: "Generate static files"},
+    {name: "init",      desc: "Create a new Hexo folder"},
+    {name: "list",      desc: "List the information of the site"},
+    {name: "migrate",   desc: "Migrate your site from other system to Hexo"},
+    {name: "publish",   desc: "Moves a draft post from _drafts to _posts folder"},
+    {name: "server",    desc: "Start the server"},
+    {name: "render",    desc: "Render files with renderer plugins"},
+    {name: "version",   desc: "Display version information"},
+    {name: "new",       desc: "Create a new post"},
+    {name: "help",      desc: "Get help on a command"},
+    {name: "deploy",    desc: "Deploy your website"},
+]
+
+/*
 commands: [
     {name: "create",  desc: "create a new project powered by vue-cli-service"},
     {name: "add",     desc: "install a plugin and invoke its generator in an already created project"},
@@ -15,8 +36,6 @@ commands: [
     {name: "ui",      desc: "start and open the vue-cli ui"},
     {name: "init",    desc: "generate a project from a remote template (legacy)"},
 ]
-
-/*
   Usage: vue <command> [options]
 
   Options:
@@ -56,7 +75,7 @@ _${cmd}_command() {
     # subcommand list
     cmds=(
 #------------------------------------------| @foreach commands
-        '${$.name}: ${$.desc}'
+        '${name}: ${desc}'
 #------------------------------------------|
     )
 
@@ -75,8 +94,8 @@ _${cmd}_command() {
 }
 
 #-------------------------------------------| @foreach commands
-## ${$src.cmd} ${$.name}
-_${$src.cmd}_command_${$.name}() {
+## ${cmd} ${name}
+_${cmd}_command_${name}() {
     ops=(
     )
     _arguments -s \\

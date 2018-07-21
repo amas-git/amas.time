@@ -1,6 +1,8 @@
 //const minimatch = require("minimatch")
-const M = require("./M");
-const _ = require("lodash");
+const M = require('./M');
+const _ = require('lodash');
+
+const mcore  = require('./mcore');
 
 /**
  * TODO:
@@ -27,6 +29,7 @@ function print(o) {
         console.error(JSON.stringify(o, null, 2));
     }
 }
+
 
 /**
  * @param $stack object array
@@ -76,7 +79,7 @@ function mktree(xs, root=xs[0], level="level", child='nodes') {
                 return xs[i];
             }
         }
-         return null;
+        return null;
     }
 
     for(let i=1; i<xs.length; ++i) {
@@ -222,8 +225,12 @@ const BASE_HANDLER = {
     mod(env, content, params) {
         let name = params[0] || "mod";
         env.mod[name] = M(`${content.join('\n')}`);
-        //env.changeContext(env.src.main);
     },
+
+    zsh(env, content, params) {
+        let r = mcore.exec(content.join("\n"), "zsh");
+    },
+
     debug(env, content, params) {
         console.log(JSON.stringify(env.sections, null, 2));
     }
@@ -373,10 +380,10 @@ function run_maple(file) {
 
         let match;
         if(line.startsWith('#----')) {
-            if (match = /^#([-]{4,256})[\|]\s[@]([a-z_A-Z][a-z_A-Z0-9]*)(.*)$/.exec(line)) {
+            if (match = /^#([-]{4,256})[|]\s[@]([a-z_A-Z][a-z_A-Z0-9]*)(.*)$/.exec(line)) {
                 let [ , level, name, params] = match;
                 maple.addSection(name.trim(), params.trim().split(/\s+/), level.length);
-            } else if (match = /^#([-]{4,256})([\|])(.*)$/.exec(line)) {
+            } else if (match = /^#([-]{4,256})([|])(.*)$/.exec(line)) {
                 let [ , level,  , expr] = match;
                 if(expr.startsWith('|')) {
                     maple.addContent(`#${level}|${expr.slice(1)}`);
@@ -409,13 +416,15 @@ function readline(file, cb) {
 //run_maple("maple/hello.mp");
 //
 run_maple("maple/orm.mp");
+
+
 // let i = Math.sign(-1);
 // console.log(`${i}`);
 // console.log(`${Math.sign(12)}`);
 // xs=[[1,2,3],4,5,6,7];
 // let [[x],] = xs;
 // console.log(x);
-
+//mcore.exec("print hello", "zsh");
 
 
 //console.log([1,2,3].reduce((acc, n) => (acc+n) , 0));

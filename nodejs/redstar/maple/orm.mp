@@ -3,7 +3,7 @@ dbname: "dbname",
 dbpath: "test.db",
 scheme: {
     peoples: [
-        {name:"name", type:"string", primaryKey:true},
+        {name:"name", type:"string:256", primaryKey:true},
         {name:"ids",   type:"int", primaryKey: true},
         {name:"age",  type:"int", unique: true},
     ]
@@ -11,7 +11,7 @@ scheme: {
 #-------------------------------------------------------------| @mod SEQ
 const sequlize_type_map = {
     text:    "Sequelize.TEXT",
-    string:    "Sequelize.TEXT",
+    string:  "Sequelize.TEXT",
     int :    "Sequelize.INTEGER",
     float:   "Sequelize.FLOAT",
     bigint:  "Sequelize.BIGINT",
@@ -25,7 +25,8 @@ const sequlize_type_map = {
 }
 
 function TYPE(type) {
-    return sequlize_type_map[type];
+    let xs = type.split(":");
+    return  `${sequlize_type_map[xs[0]]}${xs.length === 0 ?"":`(${xs[1]})`}`;
 }
 
 function hello() {
@@ -53,7 +54,7 @@ const ${$foreach.key} = sequelize.define('${$foreach.key}', {
     ${name} : {
         type: ${$mod.SEQ.TYPE(type)}
 #--------------------------| primaryKey
-        ，primaryKey: true
+        ，primaryKey: ${primaryKey}
 #--------------------------| defaultValue
         ，defaultValue: false
 #--------------------------| autoIncrement
@@ -61,9 +62,9 @@ const ${$foreach.key} = sequelize.define('${$foreach.key}', {
 #--------------------------| unique
         ，unique: 'compositeIndex'
 #--------------------------| allowNull
-        ，allowNull: false
+        ，allowNull: ${allowNull}
 #--------------------------|
-    }
+    }${$foreach.last?"":","}
 #------------------------------------------|
 }, {
     timestamps:  false,      // 禁止自动创建createAt和updateAt属性
@@ -95,10 +96,8 @@ ${$foreach.key}.instanceLevelMethod = function() {
   return 'hello';
 };
 
-#-------------------------------------------------------------|
 // 将模型定义保存到单独的文件中
-const Project = sequelize.import(__dirname + "/path/to/models/project")
-
+const ${$foreach.key}  = sequelize.import(__dirname + "/path/to/models/project")
 #-------------------------------------------------------------|
 (async () => {
     sequelize.sync(); // This will create table
