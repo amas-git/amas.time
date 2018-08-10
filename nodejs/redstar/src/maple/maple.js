@@ -1,8 +1,9 @@
 //const minimatch = require("minimatch")
 const M = require('./M');
 const _ = require('lodash');
-
+const path = require('path');
 const mcore  = require('./mcore');
+var maple_path = [];
 
 /**
  * TODO:
@@ -222,6 +223,20 @@ const BASE_HANDLER = {
         env.changeContext(env.src.main);
     },
 
+    srcfile(env, content, params) {
+        let name = params[0] || "main";
+        let c = [];
+
+        content.forEach( f => {
+            let text = mcore.object(env.mpath, f);
+            if(text) {
+                c.push(text);
+            }
+        });
+        env.src[name] = M(`module.exports={${c.join(",")}}`);
+        env.changeContext(env.src.main);
+    },
+
     mod(env, content, params) {
         let name = params[0] || "mod";
         env.mod[name] = M(`${content.join('\n')}`);
@@ -250,6 +265,12 @@ class Maple {
         this.__context = {stack:[/*{c:{}, foreach:{}}*/], c:{}, argv:[]};
         this.currentSection = Section.createRootNode();
         this.sections.push(this.currentSection);
+        this.mpath     = [...maple_path];
+
+        let scriptd = path.dirname(file);
+        if(scriptd) {
+            this.mpath.unshift(scriptd);
+        }
     }
 
     get context() {
@@ -412,12 +433,12 @@ function readline(file, cb) {
     });
 }
 
-//run_maple("maple/zsh.completion.mp");
+run_maple("maple/zsh.completion.mp");
 //run_maple("maple/hello.mp");
 //
-run_maple("maple/orm.mp");
+//run_maple("maple/orm.mp");
 
-
+// console.log([1,2,3,4,5].some((n) => n < 4));
 // let i = Math.sign(-1);
 // console.log(`${i}`);
 // console.log(`${Math.sign(12)}`);
@@ -502,3 +523,21 @@ run_maple("maple/orm.mp");
 // const aaa = 1;
 // const b = {};
 // console.log(eval.call(b, `${aaa}`));
+
+const xs = [new print(1), new print(2), new print(3)];
+
+
+function print(i) {
+    return new Promise((resolve, reject) => {
+        setTimeout(() => {
+            console.log(i);
+            resolve();
+        }, 1000);
+    });
+}
+
+(async () => {
+    xs.forEach(async (x) => {
+        await x;
+    });
+})();

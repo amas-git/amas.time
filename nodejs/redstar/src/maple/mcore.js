@@ -1,4 +1,8 @@
 const spawn = require('child_process').spawn;
+const fs = require('fs');
+const path = require('path');
+const proc = require('process');
+
 /**
  * 遍历指定的objects
  * @param o
@@ -46,7 +50,35 @@ function exec(content, cmd, ...argv) {
     });
 }
 
+function object(maple_path, name) {
+    let mpath   = [];
+    let scriptd = path.dirname(name);
+    if(scriptd) {
+        mpath.push(scriptd);
+    }
+    mpath.push(...maple_path);
+    let target = search_target(mpath, path.basename(name));
+    return target ? fs.readFileSync(target) : "";
+}
+
+/**
+ * Search specify target file under CWD, SCRIPT_DIR, MAPLE_PATH
+ * @param search_path
+ * @param name
+ * @returns undefined if not found
+ */
+function search_target(search_path, name) {
+    for (let dir of search_path) {
+        let fullpath = path.join(dir, name);
+        if (fs.existsSync(fullpath)) {
+            return fullpath;
+        }
+    }
+    return undefined;
+}
+
 module.exports = {
     walk,
-    exec
+    exec,
+    object
 };

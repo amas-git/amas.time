@@ -1,0 +1,7 @@
+cmd: "geth",
+ops: [
+    {name: "-debug",  desc:"Display verbose info"}
+],
+command : [
+
+]

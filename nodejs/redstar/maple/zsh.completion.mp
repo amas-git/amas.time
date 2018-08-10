@@ -1,4 +1,5 @@
 #--------------------------------------------------------------------------| @src
+/*
 cmd: "hexo",
 ops: [
     {name: "-config", desc:"Specify config file instead of using _config.yml"},
@@ -8,7 +9,7 @@ ops: [
     {name: "-safe",   desc:"Disable all plugins and scripts"},
     {name: "-cwd",    desc:"Specify the CWD"}
 ],
-// 字命令
+
 commands: [
     {name: "clean",     desc: "Remove generated files and cache"},
     {name: "config",    desc: "Get or set configurations"},
@@ -25,7 +26,6 @@ commands: [
     {name: "deploy",    desc: "Deploy your website"},
 ]
 
-/*
 commands: [
     {name: "create",  desc: "create a new project powered by vue-cli-service"},
     {name: "add",     desc: "install a plugin and invoke its generator in an already created project"},
@@ -36,25 +36,9 @@ commands: [
     {name: "ui",      desc: "start and open the vue-cli ui"},
     {name: "init",    desc: "generate a project from a remote template (legacy)"},
 ]
-  Usage: vue <command> [options]
-
-  Options:
-
-    -V, --version                         output the version number
-    -h, --help                            output usage information
-
-  Commands:
-
-    create [options] <app-name>           create a new project powered by vue-cli-service
-    add <plugin> [pluginOptions]          install a plugin and invoke its generator in an already created project
-    invoke <plugin> [pluginOptions]       invoke the generator of a plugin in an already created project
-    inspect [options] [paths...]          inspect the webpack config in a project with vue-cli-service
-    serve [options] [entry]               serve a .js or .vue file in development mode with zero config
-    build [options] [entry]               build a .js or .vue file in production mode with zero config
-    ui [options]                          start and open the vue-cli ui
-    init [options] <template> <app-name>  generate a project from a remote template (legacy API, requires @vue/cli-init)
-
 */
+#--------------------------------------------------------------------------| @srcfile
+geth.in
 #--------------------------------------------------------------------------|
 #compdef ${cmd}
 
