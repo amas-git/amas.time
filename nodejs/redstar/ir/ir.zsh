@@ -116,7 +116,10 @@ function bitrue.db.describe() {
     bitrue.db.exec 'describe ${tbname};' | column -t
 }
 
-
+# 
+function bitrue.users() {
+    bitrue.db.exec 'SELECT country_code,count(*) FROM user WHERE DATE('last_login_time')=CURDATE() GROUP BY country_code;'
+}
 
 #-----------------------------------------------------------------------------------[ ETH ]
 ETH_JSON_RPC=http://127.0.0.1:8545

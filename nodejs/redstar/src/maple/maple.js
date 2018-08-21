@@ -35,9 +35,9 @@ function print(o) {
 /**
  * @param $stack object array
  * @param $code code to evaluated under the given stack
- * @returns {string} result
+ * @returns {string} result code to eval
  */
-function expose($stack, $code) {
+function expose($os, $code) {
     function convertId(keys) {
         return keys.map((key)=>{
             if(key.match(/\d+/)) {
@@ -48,13 +48,20 @@ function expose($stack, $code) {
             return key;
         });
     }
-    let rs = [];
-    $stack.forEach((e,i) => {
-        let ids = convertId(Object.keys($stack[i].c));
-        rs.push(`let {${ids.join(',')}} = $stack[${i}].c;{`);
+    let rs  = [];
+    let level = 0;
+
+    $os.forEach((e,i) => {
+        if(_.isEmpty(e)) return;
+
+        let ids = convertId(Object.keys(e));
+        if(_.isEmpty(ids)) return;
+
+        rs.push(`let {${ids.join(',')}} = $os[${i}];{`);
+        level+=1;
     });
     rs.push($code);
-    rs.push("}".repeat($stack.length));
+    rs.push("}".repeat(level));
     return rs.join("");
 }
 
@@ -62,14 +69,14 @@ function expose($stack, $code) {
 function template(env, template) {
     let $        = env.context;
     let $T       = template.replace(/`/g, '\\`');
-    let $stack   = env.__context.stack;
     let $argv    = env.__context.argv;
     let $func    = env.functions;
     let $src     = env.src;
     let $mod     = env.mod;
     let $var     = env.var;
     let $foreach = env.__context.foreach;
-    return eval(expose($stack,`\`${$T}\`;`));
+    let $os  = env.expose();
+    return eval(expose($os,`\`${$T}\`;`));
 }
 
 
@@ -124,19 +131,21 @@ class Section {
     isLoop() { return this.type === SectionType.LOOP; }
 
     test(env) {
-        let $argv = env.__context.argv;
         let $expr = this.params.join("").trim();
         if(_.isEmpty($expr)) {
             return true;
         } else {
-            let $stack = env.__context.stack;
             let r = false;
             try {
-                r = eval(expose($stack, $expr));
+                let $os = env.expose();
+                let $   = env.context;
+                r = eval(expose($os, $expr));
+                //print(expose(env.expose(), $expr));
             } catch (e) {
+                console.error(e);
                 r = false;
             }
-            //console.log(`${$expr} -> ${r}`);
+            // console.log(`${$expr} -> ${r}`);
             return (r) ? true : false;
         }
     }
@@ -194,12 +203,19 @@ class Section {
         return rs;
     }
 
-    // TODO: rename to apply
-    apply(env, argv) {
-        let rs = [];
-        env.argv(argv);
+    /**
+     *
+     * @param env
+     * @param params formal params
+     * @param args actual params
+     * @returns {Array}
+     */
+    apply(env, params, args) {
+        //console.log(JSON.stringify(env,null,4));
+        let rs = {id:this.id, rs:[], sep: this.sep};
+        env.argv(params, args);
         this._eval(rs, env);
-        return rs;
+        return rs.rs;
     }
 
     static createRootNode() {
@@ -262,7 +278,7 @@ class Maple {
         this.handlers  = BASE_HANDLER;
         this.sections  = [];
         this.functions = {};
-        this.__context = {stack:[/*{c:{}, foreach:{}}*/], c:{}, argv:[]};
+        this.__context = {stack:[/*{c:{}, foreach:{}}*/], c:{}, argv:{}};
         this.currentSection = Section.createRootNode();
         this.sections.push(this.currentSection);
         this.mpath     = [...maple_path];
@@ -292,7 +308,24 @@ class Maple {
         //console.log(`[CHANGE CTX -] : CTX = ${JSON.stringify(this.__context.c)} TYPE:${(typeof this.__context.c)}`);
     }
 
-    argv(argv) {
+    expose() {
+        let os = [];
+        // + src object
+        this.__context.stack.forEach((e) => { os.push(e.c) });
+
+        // + func argv
+        if(!_.isEmpty(this.__context.argv)) {
+            os.push(this.__context.argv);
+        }
+        return os;
+    }
+
+    argv(params, args) {
+        let argv = params.reduce((r,e,i,_) => {
+            // FIXME: when args.length less then params;
+            r[e] = args[i];
+            return r;
+        },{});
         this.__context.argv = argv;
     }
 
@@ -303,7 +336,7 @@ class Maple {
         } else if("foreach" == name) {
             name = type = SectionType.LOOP;
         } else if("func" == name) {
-            name = SectionType.FUNC;
+            name = type = SectionType.FUNC;
         } else {
             type = SectionType.NORM;
         }
@@ -315,11 +348,11 @@ class Maple {
         this.sections.push(this.currentSection);
 
         if(this.currentSection.isFunc()) {
-            let [fname,  ...opts] = this.currentSection.params;
+            let [fname,  ...params] = this.currentSection.params;
             let s = this.currentSection;
-            this.addFunction(fname,(...parms) => {
+            this.addFunction(fname,(...args) => {
                 let section = s;
-                return section.apply(this, parms);
+                return section.apply(this, params, args);
             }, "");
         } else if(this.currentSection.isLoop()) {
             let sep = params.length > 1 ? params[1] : null;
@@ -433,8 +466,8 @@ function readline(file, cb) {
     });
 }
 
-run_maple("maple/zsh.completion.mp");
-//run_maple("maple/hello.mp");
+//run_maple("maple/zsh.completion.mp");
+run_maple("maple/README.mp");
 //
 //run_maple("maple/orm.mp");
 
@@ -523,21 +556,21 @@ run_maple("maple/zsh.completion.mp");
 // const aaa = 1;
 // const b = {};
 // console.log(eval.call(b, `${aaa}`));
-
-const xs = [new print(1), new print(2), new print(3)];
-
-
-function print(i) {
-    return new Promise((resolve, reject) => {
-        setTimeout(() => {
-            console.log(i);
-            resolve();
-        }, 1000);
-    });
-}
-
-(async () => {
-    xs.forEach(async (x) => {
-        await x;
-    });
-})();
+//
+// const xs = [new print(1), new print(2), new print(3)];
+//
+//
+// function print(i) {
+//     return new Promise((resolve, reject) => {
+//         setTimeout(() => {
+//             console.log(i);
+//             resolve();
+//         }, 1000);
+//     });
+// }
+//
+// (async () => {
+//     xs.forEach(async (x) => {
+//         await x;
+//     });
+// })();

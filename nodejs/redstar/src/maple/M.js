@@ -1,7 +1,7 @@
 'use strict';
 
-var Module = require('module');
-var path = require('path');
+const Module = require('module');
+const path   = require('path');
 
 module.exports = function requireFromString(code, filename, opts) {
     if (typeof filename === 'object') {
