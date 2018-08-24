@@ -25,9 +25,9 @@ const TYPE_OF = function(obj) {
     return ({}).toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase();
 };
 
-function print(o) {
+function print(o, tag="") {
     if(o) {
-        console.error(JSON.stringify(o, null, 2));
+        console.error(tag+JSON.stringify(o, null, 2));
     }
 }
 
@@ -65,20 +65,14 @@ function expose($os, $code) {
     return rs.join("");
 }
 
-
-function template(env, template) {
-    let $        = env.context;
-    let $T       = template.replace(/`/g, '\\`');
-    let $argv    = env.__context.argv;
-    let $func    = env.functions;
-    let $src     = env.src;
-    let $mod     = env.mod;
-    let $var     = env.var;
-    let $foreach = env.__context.foreach;
-    let $os  = env.expose();
-    return eval(expose($os,`\`${$T}\`;`));
+function exeval($os, $code) {
+    return eval(expose($os, $code));
 }
 
+function template(env, template) {
+    let $T       = template.replace(/`/g, '\\`');
+    return exeval(env.expose(), `\`${$T}\`;`);
+}
 
 function mktree(xs, root=xs[0], level="level", child='nodes') {
     function parentOf(xs, x, anchor) {
@@ -122,7 +116,6 @@ class Section {
         this.contents = [];
         this.params   = [];
         this.sep      = "\n";
-        this.__join   = null;
     }
 
     isFunc() { return this.type === SectionType.FUNC; }
@@ -151,30 +144,47 @@ class Section {
     }
 
     join(c='\n') {
-        if(!this.__join) {
-            this.__join = this.contents.join(c);
-        }
-        return this.__join;
+        return this.contents.join(c);
     }
 
     static issue(section, rs, xs) {
         if(_.isEmpty(xs)){
             return;
         }
-
+        // print(xs, "-> ");
         rs.rs.push(xs);
         return rs;
     }
 
     'eval@loop'(rs, env) {
-        let o    = this.params[0] || "$";
-        let os   = ('$' == this.params[0]) ? env.context : env.context[o];
+        // @foreach x:xs
+        // @foreach xs -> @foreach $:xs
+        if(_.isEmpty(this.params)) {
+            return;
+        }
 
-        for (let key in os) {
-            env.changeContext(os[key], Maple.createForeachStatus(key, os));
+        let [xname, xs_name=xname] = this.params[0].split(':');
+        if(xname === xs_name) {
+            xname = '$';
+        }
+
+        let os = env.context[xs_name];
+
+        let LENGTH = Object.keys(os).length;
+        let n   = 0;
+        _.forEach(os, (value, key) => {
+            let $o = {};
+            n += 1;
+
+            $o[xname]    = value;
+            $o["$key"]   = key;
+            $o["$first"] = n === 1;
+            $o["$last"]  = n === LENGTH;
+
+            env.changeContext($o);
             this._eval(rs, env);
             env.restoreContext();
-        }
+        });
     }
 
     'eval@part'(rs, env) {
@@ -198,6 +208,7 @@ class Section {
     }
 
     eval(env={}) {
+        //console.log(`EVAL : ${this.id}${this.type}`);
         let rs = {id:this.id, rs:[], sep: this.sep};
         this[`eval${this.type}`](rs, env);
         return rs;
@@ -211,11 +222,11 @@ class Section {
      * @returns {Array}
      */
     apply(env, params, args) {
-        //console.log(JSON.stringify(env,null,4));
+        console.log(`apply: ${params} with ${args}`);
         let rs = {id:this.id, rs:[], sep: this.sep};
         env.argv(params, args);
         this._eval(rs, env);
-        return rs.rs;
+        return Maple.printrs(rs);
     }
 
     static createRootNode() {
@@ -278,10 +289,16 @@ class Maple {
         this.handlers  = BASE_HANDLER;
         this.sections  = [];
         this.functions = {};
-        this.__context = {stack:[/*{c:{}, foreach:{}}*/], c:{}, argv:{}};
+        this.__context = {stack:[], argv:{}};
         this.currentSection = Section.createRootNode();
         this.sections.push(this.currentSection);
         this.mpath     = [...maple_path];
+        this.export    = {
+            $src       : this.src,
+            $mod       : this.mod,
+            $var       : this.var,
+            $func      : this.functions,
+        };
 
         let scriptd = path.dirname(file);
         if(scriptd) {
@@ -290,32 +307,27 @@ class Maple {
     }
 
     get context() {
-        return this.__context.c;
+        return this.__context.stack[0];
     }
 
-    changeContext(ctx, foreach={}) {
-        this.__context.stack.push({c:ctx, foreach:foreach});
-        this.__context.c = ctx;
-        this.__context.foreach = foreach;
-        //console.log(`[CHANGE CTX +] : CTX = ${JSON.stringify(this.__context.c)} TYPE:${(typeof this.__context.c)}`);
+    changeContext(ctx) {
+        this.__context.stack.unshift(ctx); //console.log(`[CHANGE CTX +] : CTX = ${JSON.stringify(this.context)} TYPE:${(typeof this.context)}`);
     }
 
     restoreContext() {
-        this.__context.stack.pop();
-        let {c, foreach} =  this.__context.stack[this.__context.stack.length - 1];
-        this.__context.c = c;
-        this.__context.foreach = foreach;
-        //console.log(`[CHANGE CTX -] : CTX = ${JSON.stringify(this.__context.c)} TYPE:${(typeof this.__context.c)}`);
+        this.__context.stack.shift(); //console.log(`[CHANGE CTX -] : CTX = ${JSON.stringify(this.context)} TYPE:${(typeof this.context)}`);
     }
 
     expose() {
         let os = [];
+        os.unshift(this.export);
+
         // + src object
-        this.__context.stack.forEach((e) => { os.push(e.c) });
+        this.__context.stack.forEach((e) => { os.unshift(e); });
 
         // + func argv
         if(!_.isEmpty(this.__context.argv)) {
-            os.push(this.__context.argv);
+            os.unshift(this.__context.argv);
         }
         return os;
     }
@@ -379,13 +391,13 @@ class Maple {
 
     tree() {
         this.root = mktree(this.sections, this.sections[0], "level", "sections");
-        //console.log(JSON.stringify(this.root, null,4));
-        return this;
+        //print(this.sections);
     }
 
 
     eval() {
         let rs = this.root.eval(this);
+        //print(rs);
         let text = Maple.printrs(rs);
         console.error(text);
         return rs;
@@ -396,7 +408,6 @@ class Maple {
         let {id, sep, rs} = result;
         for(let r of rs) {
             if(_.isString(r)) {
-                //console.log(`'${r}'`);
                 text.push(r);
             } else {
                 if(_.isEmpty(r.rs)) {
@@ -406,18 +417,6 @@ class Maple {
             }
         }
         return text.join(sep==="\n" ? sep : sep+"\n");
-    }
-
-    static createForeachStatus(keys, object) {
-        let first = false;
-        let last  = false;
-        let key   = keys;
-        if(_.isArray(object)) {
-            let i = parseInt(keys);
-            first = (i === 0);
-            last  = (i === object.length - 1);
-        }
-        return {first: first, last: last, key: key};
     }
 }
 
@@ -451,7 +450,6 @@ function run_maple(file) {
         }
 
         maple.addContent(line);
-
     });
 }
 
