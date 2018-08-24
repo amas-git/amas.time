@@ -8,12 +8,12 @@ var maple_path = [];
 /**
  * TODO:
  *  1. 用array.some()改写正则匹配部分
- * HISTORY:
- *  1. 2018.06.18: Finished Core Design
- * @param text
- *  2. 如何更加智能的查找keys
  *  3. 性能统计: eval求值时间，次数，产生的字符数量等等
  *  4. 实现pipe
+ * HISTORY:
+ *  1. 2018.06.18: Finished Core Design
+ *  2. 如何更加智能的查找keys
+ * @param text
  *  5. 实现IO section
  *  6. 用迭代代替mktree|printrs递归方式
  *  7. 提供一些打印上下文信息的调试函数，方便定位问题
@@ -222,7 +222,7 @@ class Section {
      * @returns {Array}
      */
     apply(env, params, args) {
-        console.log(`apply: ${params} with ${args}`);
+        //console.log(`apply: ${params} with ${args}`);
         let rs = {id:this.id, rs:[], sep: this.sep};
         env.argv(params, args);
         this._eval(rs, env);
@@ -448,7 +448,7 @@ function run_maple(file) {
             }
             return;
         }
-
+        // DON't MISS the last line
         maple.addContent(line);
     });
 }
@@ -466,6 +466,8 @@ function readline(file, cb) {
 
 //run_maple("maple/zsh.completion.mp");
 run_maple("maple/README.mp");
+
+// console.log("a | b a || c | d".split(/[|](?=[^|])/));
 //
 //run_maple("maple/orm.mp");
 
