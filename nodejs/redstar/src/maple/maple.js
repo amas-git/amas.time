@@ -275,8 +275,13 @@ const BASE_HANDLER = {
     },
 
     mod(env, content, params) {
-        let name = params[0] || "mod";
-        env.mod[name] = M(`${content.join('\n')}`);
+        let name = params[0];
+        let mod = M(`${content.join('\n')}`);
+        if (name) {
+            env.mod[name] = mod;
+        } else {
+            _.assign(env.functions, mod);
+        }
     },
 
     zsh(env, content, params) {
@@ -317,29 +322,28 @@ class Maple {
     }
 
     get context() {
-        return this.__context.stack[0];
+        return _.last(this.__context.stack);
     }
 
     changeContext(ctx) {
-        this.__context.stack.unshift(ctx); //console.log(`[CHANGE CTX +] : CTX = ${JSON.stringify(this.context)} TYPE:${(typeof this.context)}`);
+        this.__context.stack.push(ctx);  //console.log(`[CHANGE CTX +] : CTX = ${JSON.stringify(this.context)} TYPE:${(typeof this.context)}`);
     }
 
     restoreContext() {
-        this.__context.stack.shift(); //console.log(`[CHANGE CTX -] : CTX = ${JSON.stringify(this.context)} TYPE:${(typeof this.context)}`);
+        this.__context.stack.pop(); //console.log(`[CHANGE CTX -] : CTX = ${JSON.stringify(this.context)} TYPE:${(typeof this.context)}`);
     }
 
     expose() {
         let os = [];
 
         // export function for easy to use
-        os.unshift(this.export.$func);
+        os.push(this.export.$func);
 
         // export the maple state
-        os.unshift(this.export);
+        os.push(this.export);
 
         // export the stack objects
-        this.__context.stack.forEach((elem) => { os.unshift(elem); });
-
+        this.__context.stack.forEach((elem) => { os.push(elem); });
         return os;
     }
 
