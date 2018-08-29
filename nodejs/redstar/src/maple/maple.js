@@ -31,6 +31,9 @@ function print(o, tag="") {
     }
 }
 
+function error(e) {
+    console.log(e);
+}
 
 /**
  * @param $stack object array
@@ -127,20 +130,17 @@ class Section {
         let $expr = this.params.join("").trim();
         if(_.isEmpty($expr)) {
             return true;
-        } else {
-            let r = false;
-            try {
-                let $os = env.expose();
-                let $   = env.context;
-                r = eval(expose($os, $expr));
-                //print(expose(env.expose(), $expr));
-            } catch (e) {
-                console.error(e);
-                r = false;
-            }
-            // console.log(`${$expr} -> ${r}`);
-            return (r) ? true : false;
         }
+
+        let r = false;
+        try {
+            r = exeval(env.expose(), $expr);
+        } catch (e) {
+            error(e);
+            r = false;
+        }
+        // console.log(`${$expr} -> ${r}`);
+        return (r) ? true : false;
     }
 
     join(c='\n') {
@@ -151,7 +151,6 @@ class Section {
         if(_.isEmpty(xs)){
             return;
         }
-        // print(xs, "-> ");
         rs.rs.push(xs);
         return rs;
     }
@@ -222,10 +221,21 @@ class Section {
      * @returns {Array}
      */
     apply(env, params, args) {
+        function argv(params, args) {
+            let argv = params.reduce((r,e,i,_) => {
+                // FIXME: when args.length less then params;
+                r[e] = args[i];
+                return r;
+            },{});
+            return argv;
+        }
+
         //console.log(`apply: ${params} with ${args}`);
         let rs = {id:this.id, rs:[], sep: this.sep};
-        env.argv(params, args);
+        env.changeContext(argv(params, args));
         this._eval(rs, env);
+        env.restoreContext();
+
         return Maple.printrs(rs);
     }
 
@@ -289,7 +299,7 @@ class Maple {
         this.handlers  = BASE_HANDLER;
         this.sections  = [];
         this.functions = {};
-        this.__context = {stack:[], argv:{}};
+        this.__context = {stack:[]};
         this.currentSection = Section.createRootNode();
         this.sections.push(this.currentSection);
         this.mpath     = [...maple_path];
@@ -320,25 +330,17 @@ class Maple {
 
     expose() {
         let os = [];
+
+        // export function for easy to use
+        os.unshift(this.export.$func);
+
+        // export the maple state
         os.unshift(this.export);
 
-        // + src object
-        this.__context.stack.forEach((e) => { os.unshift(e); });
+        // export the stack objects
+        this.__context.stack.forEach((elem) => { os.unshift(elem); });
 
-        // + func argv
-        if(!_.isEmpty(this.__context.argv)) {
-            os.unshift(this.__context.argv);
-        }
         return os;
-    }
-
-    argv(params, args) {
-        let argv = params.reduce((r,e,i,_) => {
-            // FIXME: when args.length less then params;
-            r[e] = args[i];
-            return r;
-        },{});
-        this.__context.argv = argv;
     }
 
     addSection(name, params, level=0) {
@@ -361,9 +363,8 @@ class Maple {
 
         if(this.currentSection.isFunc()) {
             let [fname,  ...params] = this.currentSection.params;
-            let s = this.currentSection;
+            let section = this.currentSection;
             this.addFunction(fname,(...args) => {
-                let section = s;
                 return section.apply(this, params, args);
             }, "");
         } else if(this.currentSection.isLoop()) {
@@ -422,7 +423,7 @@ class Maple {
 
 function run_maple(file) {
     const maple = new Maple(file);
-    maple.addFunction("L",(t) => t.toUpperCase(),"text");
+    maple.addFunction("L",(t) => t.toUpperCase(),"");
 
     readline(file, (line, num) => {
         if(line == null) {
@@ -448,7 +449,6 @@ function run_maple(file) {
             }
             return;
         }
-        // DON't MISS the last line
         maple.addContent(line);
     });
 }

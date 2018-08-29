@@ -48,7 +48,7 @@ const sequelize = new Sequelize('${dbname}', null, null, {
   storage: '${dbpath}',
   operatorsAliases: false
 });
-#-------------------------------------------------------------| @foreach scheme
+#-------------------------------------------------------------| @foreach schemev
 const ${$foreach.key} = sequelize.define('${$foreach.key}', {
 #------------------------------------------| @foreach $
     ${name} : {
