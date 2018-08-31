@@ -12,18 +12,17 @@ var maple_path = [];
  *  4. 实现pipe
  * HISTORY:
  *  1. 2018.06.18: Finished Core Design
- *  2. 如何更加智能的查找keys
+ *  2. use function all instead of eval&let, the function parmas limit will be a problems
  * @param text
  *  5. 实现IO section
  *  6. 用迭代代替mktree|printrs递归方式
  *  7. 提供一些打印上下文信息的调试函数，方便定位问题
+ *  8. **可以把section编译成js函数
  *  FIXME:
  *
  */
 
-const TYPE_OF = function(obj) {
-    return ({}).toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase();
-};
+
 
 function print(o, tag="") {
     if(o) {
@@ -35,46 +34,22 @@ function error(e) {
     console.log(e);
 }
 
-/**
- * @param $stack object array
- * @param $code code to evaluated under the given stack
- * @returns {string} result code to eval
- */
-function expose($os, $code) {
-    function convertId(keys) {
-        return keys.map((key)=>{
-            if(key.match(/\d+/)) {
-                return `$${key}`;
-            }
-            // TODO: support more convertion
-            // TODO: when the array keys is large, only keep 9 id
-            return key;
-        });
-    }
-    let rs  = [];
-    let level = 0;
+function joinObjects(os) {
+    let r = os.reduce((r,e) => { return _.assign(r, e); }, {});
+    return r;
+}
 
-    $os.forEach((e,i) => {
-        if(_.isEmpty(e)) return;
-
-        let ids = convertId(Object.keys(e));
-        if(_.isEmpty(ids)) return;
-
-        rs.push(`let {${ids.join(',')}} = $os[${i}];{`);
-        level+=1;
-    });
-    rs.push($code);
-    rs.push("}".repeat(level));
-    return rs.join("");
+function mcall(os, code) {
+    return new Function(Object.keys(os), code).apply(null, Object.values(os));
 }
 
 function exeval($os, $code) {
-    return eval(expose($os, $code));
+    return mcall(joinObjects($os), `${$code}`);
 }
 
 function template(env, template) {
     let $T       = template.replace(/`/g, '\\`');
-    return exeval(env.expose(), `\`${$T}\`;`);
+    return exeval(env.expose(), `return \`${$T}\`;`);
 }
 
 function mktree(xs, root=xs[0], level="level", child='nodes') {
@@ -134,7 +109,7 @@ class Section {
 
         let r = false;
         try {
-            r = exeval(env.expose(), $expr);
+            r = exeval(env.expose(), `return ${$expr};`);
         } catch (e) {
             error(e);
             r = false;
@@ -243,6 +218,9 @@ class Section {
         return new Section("root",SectionType.PART,2048);
     }
 
+    toFunction() {
+
+    }
 }
 
 const BASE_HANDLER = {
@@ -411,16 +389,16 @@ class Maple {
     static printrs(result) {
         let text = [];
         let {id, sep, rs} = result;
-        for(let r of rs) {
+        rs.forEach((r) => {
             if(_.isString(r)) {
                 text.push(r);
             } else {
                 if(_.isEmpty(r.rs)) {
-                    continue;
+                    return;
                 }
                 text.push(Maple.printrs(r));
             }
-        }
+        });
         return text.join(sep==="\n" ? sep : sep+"\n");
     }
 }
@@ -468,113 +446,6 @@ function readline(file, cb) {
     });
 }
 
+
 //run_maple("maple/zsh.completion.mp");
 run_maple("maple/README.mp");
-
-// console.log("a | b a || c | d".split(/[|](?=[^|])/));
-//
-//run_maple("maple/orm.mp");
-
-// console.log([1,2,3,4,5].some((n) => n < 4));
-// let i = Math.sign(-1);
-// console.log(`${i}`);
-// console.log(`${Math.sign(12)}`);
-// xs=[[1,2,3],4,5,6,7];
-// let [[x],] = xs;
-// console.log(x);
-//mcore.exec("print hello", "zsh");
-
-
-//console.log([1,2,3].reduce((acc, n) => (acc+n) , 0));
-//
-// function f(m, n) {
-//     'strict mode'
-//     if(n == 0) {
-//         return n;
-//     }
-//     return f(m+n, n-1);
-// }
-//
-// console.log(f(1300));
-
-// let x = {a:1, b:2};
-// delete x.a;
-// console.log(JSON.stringify(x));
-
-// var xs = {
-//     name:{
-//         a:{number : 21, age : 1},
-//         b:{number : 23, age : 2},
-//         c:{number : 24, age : 3}
-//     }
-// };
-//
-//
-// for(x of xs) {
-//     console.log(JSON.stringify(x));
-// }
-
-//
-// function a(n, s, b) {
-//     return `${n} ${s} ${JSON.stringify(b)}`;
-// }
-//
-// const f = function(s, b) {
-//     return a(110, s, b);
-// };
-//
-// const z = function (...params) {
-//     return a("Z:",...params);
-// }
-//
-// let o1 = {o:1};
-// console.log(f("a", o1));
-//
-//
-//
-// console.log(f("AAA", o1));
-//
-//
-// o1 = 2;
-//
-// console.log(z("ZZZ", o1));
-// console.log(z("BBB", {a:1}));
-// var Promise = require("bluebird");
-// const Web3js = require('web3');
-// var web3.eth = Promise.promisifyAll(web3.eth);
-// const PSUFFIX = "__ASYNC";
-//
-//
-// const Web3 = {};
-//
-// createAgentFunction(Web3, we)
-//
-// function createAgentFunction(o,from,suffix) {
-//     for(let k of Object.keys(from)) {
-//         if(k.endsWith(PSUFFIX) && typeof from[k] === 'function') {
-//             o[k.replace()] = from[k];
-//         }
-//     }
-// }
-//
-// const aaa = 1;
-// const b = {};
-// console.log(eval.call(b, `${aaa}`));
-//
-// const xs = [new print(1), new print(2), new print(3)];
-//
-//
-// function print(i) {
-//     return new Promise((resolve, reject) => {
-//         setTimeout(() => {
-//             console.log(i);
-//             resolve();
-//         }, 1000);
-//     });
-// }
-//
-// (async () => {
-//     xs.forEach(async (x) => {
-//         await x;
-//     });
-// })();

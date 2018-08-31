@@ -3,6 +3,10 @@ const fs = require('fs');
 const path = require('path');
 const proc = require('process');
 
+const type = function(obj) {
+    return ({}).toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase();
+};
+
 /**
  * 遍历指定的objects
  * @param o
@@ -80,5 +84,45 @@ function search_target(search_path, name) {
 module.exports = {
     walk,
     exec,
-    object
+    object,
+    type
 };
+
+
+
+function _exeval($os, $code) {
+    return eval(expose($os, $code));
+}
+
+/**
+ * @param $stack object array
+ * @param $code code to evaluated under the given stack
+ * @returns {string} result code to eval
+ */
+function expose($os, $code) {
+    function convertId(keys) {
+        return keys.map((key)=>{
+            if(key.match(/\d+/)) {
+                return `$${key}`;
+            }
+            // TODO: support more convertion
+            // TODO: when the array keys is large, only keep 9 id
+            return key;
+        });
+    }
+    let rs  = [];
+    let level = 0;
+
+    $os.forEach((e,i) => {
+        if(_.isEmpty(e)) return;
+
+        let ids = convertId(Object.keys(e));
+        if(_.isEmpty(ids)) return;
+
+        rs.push(`let {${ids.join(',')}} = $os[${i}];{`);
+        level+=1;
+    });
+    rs.push($code);
+    rs.push("}".repeat(level));
+    return rs.join("");
+}
