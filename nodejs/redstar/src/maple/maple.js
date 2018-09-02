@@ -392,7 +392,7 @@ class Maple {
 
     eval() {
         let rs = this.root.eval(this);
-        //print(rs);
+        print(rs);
         let text = Maple.printrs(rs);
         //console.error(text);
         return rs;
