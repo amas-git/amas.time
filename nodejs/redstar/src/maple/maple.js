@@ -39,8 +39,19 @@ function joinObjects(os) {
     return r;
 }
 
+function convertId(keys=[]) {
+    return keys.map((key)=>{
+        if(key.match(/\d+/)) {
+            return `$${key}`;
+        }
+        // TODO: support more convertion
+        // TODO: when the array keys is large, only keep 9 id
+        return key;
+    });
+}
+
 function mcall(os, code) {
-    return new Function(Object.keys(os), code).apply(null, Object.values(os));
+    return new Function(convertId(Object.keys(os)), code).apply(null, Object.values(os));
 }
 
 function exeval($os, $code) {
@@ -214,6 +225,10 @@ class Section {
         return Maple.printrs(rs);
     }
 
+    toFunction() {
+
+    }
+
     static createRootNode() {
         return new Section("root",SectionType.PART,2048);
     }
@@ -318,7 +333,7 @@ class Maple {
         os.push(this.export);
 
         // export the stack objects
-        os.push(this.__context.stack);
+        os.push(...this.__context.stack);
         return os;
     }
 
@@ -371,7 +386,7 @@ class Maple {
 
     tree() {
         this.root = mktree(this.sections, this.sections[0], "level", "sections");
-        //print(this.sections);
+        print(this.sections);
     }
 
 
@@ -379,7 +394,7 @@ class Maple {
         let rs = this.root.eval(this);
         //print(rs);
         let text = Maple.printrs(rs);
-        console.error(text);
+        //console.error(text);
         return rs;
     }
 
@@ -445,10 +460,10 @@ function readline(file, cb) {
 
 
 //run_maple("maple/zsh.completion.mp");
-//run_maple("maple/README.mp");
-function reduceFunctions(fns=[], init) {
-    return fns.reduce((r,e) => { return e(r); }, init);
-}
-
-let r  = reduceFunctions([(e)=>{ return e.join('\n');}, (e)=>{ return e.toUpperCase(); }], ["aaaa", "bbbb", "cccc"]);
-console.log(r);
+run_maple("maple/README.mp");
+// function reduceFunctions(fns=[], init) {
+//     return fns.reduce((r,e) => { return e(r); }, init);
+// }
+//
+// let r  = reduceFunctions([(e)=>{ return e.join('\n');}, (e)=>{ return e.toUpperCase(); }], ["aaaa", "bbbb", "cccc"]);
+// console.log(r);
