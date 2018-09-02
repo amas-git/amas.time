@@ -141,11 +141,12 @@ class Section {
         return rs;
     }
 
-    'eval@loop'(rs, env) {
+    'eval@loop'(env) {
         // @foreach x:xs
         // @foreach xs -> @foreach $:xs
+        let rs = [];
         if(_.isEmpty(this.params)) {
-            return;
+            return rs;
         }
 
         let [xname, xs_name=xname] = this.params[0].split(':');
@@ -157,6 +158,7 @@ class Section {
 
         let LENGTH = Object.keys(os).length;
         let n   = 0;
+
         _.forEach(os, (value, key) => {
             let $o = {};
             n += 1;
@@ -167,35 +169,38 @@ class Section {
             $o["$last"]  = n === LENGTH;
 
             env.changeContext($o);
-            this._eval(rs, env);
+            rs.push(this._eval(env));
             env.restoreContext();
         });
+        return rs;
     }
 
-    'eval@part'(rs, env) {
+    'eval@part'(env) {
         if(this.test(env)) {
-            this._eval(rs, env);
+            return this._eval(env);
         }
+        return [];
     }
 
-    'eval@norm'(rs, env) {
-        let r = env.handlers[this.name](env, this.contents, this.params);
-        Section.issue(this, rs, r);
+    'eval@norm'(env) {
+        let r = env.handlers[this.name](env, this.contents, this.params) || [];
+        return r;
     }
 
-    'eval@func'(rs, env) { /* NOP*/ }
+    'eval@func'(env) { return []; }
 
-    _eval(rs, env) {
-        Section.issue(this, rs, template(env, this.join(this.sep)));
+    _eval(env) {
+        let rs = [];
+        rs.push(template(env, this.join(this.sep)));
         for (let s of this.sections) {
-            Section.issue(s, rs, s.eval(env, rs));
+            rs.push(s.eval(env));
         }
+        return rs;
     }
 
     eval(env={}) {
         //console.log(`EVAL : ${this.id}${this.type}`);
-        let rs = {id:this.id, rs:[], sep: this.sep};
-        this[`eval${this.type}`](rs, env);
+        let rs =  this[`eval${this.type}`](env);
         return rs;
     }
 
@@ -217,9 +222,9 @@ class Section {
         }
 
         //console.log(`apply: ${params} with ${args}`);
-        let rs = {id:this.id, rs:[], sep: this.sep};
+        //let rs = {id:this.id, rs:[], sep: this.sep};
         env.changeContext(argv(params, args));
-        this._eval(rs, env);
+        let rs = this._eval(env);
         env.restoreContext();
 
         return Maple.printrs(rs);
@@ -282,6 +287,8 @@ const BASE_HANDLER = {
         console.log(JSON.stringify(env.sections, null, 2));
     }
 };
+
+
 
 class Maple {
     constructor(file) {
@@ -386,32 +393,22 @@ class Maple {
 
     tree() {
         this.root = mktree(this.sections, this.sections[0], "level", "sections");
-        print(this.sections);
+        //print(this.sections);
     }
 
 
     eval() {
         let rs = this.root.eval(this);
+        //let text = Maple.printrs(rs);
         print(rs);
-        let text = Maple.printrs(rs);
+        //console.log(Maple.printrs(rs));
         //console.error(text);
         return rs;
     }
 
-    static printrs(result) {
-        let text = [];
-        let {id, sep, rs} = result;
-        rs.forEach((r) => {
-            if(_.isString(r)) {
-                text.push(r);
-            } else {
-                if(_.isEmpty(r.rs)) {
-                    return;
-                }
-                text.push(Maple.printrs(r));
-            }
-        });
-        return text.join(sep==="\n" ? sep : sep+"\n");
+
+    static printrs(xs) {
+        return mcore.flat(xs).join("\n");
     }
 }
 
