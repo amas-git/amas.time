@@ -88,7 +88,9 @@ module.exports = {
     type
 };
 
-
+function shuffle(xs=[]) {
+    return xs.sort(() => { return Math.random() - 0.5; });
+}
 
 function _exeval($os, $code) {
     return eval(expose($os, $code));

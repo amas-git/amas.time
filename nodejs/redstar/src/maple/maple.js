@@ -218,9 +218,6 @@ class Section {
         return new Section("root",SectionType.PART,2048);
     }
 
-    toFunction() {
-
-    }
 }
 
 const BASE_HANDLER = {
@@ -321,7 +318,7 @@ class Maple {
         os.push(this.export);
 
         // export the stack objects
-        this.__context.stack.forEach((elem) => { os.push(elem); });
+        os.push(this.__context.stack);
         return os;
     }
 
@@ -448,4 +445,10 @@ function readline(file, cb) {
 
 
 //run_maple("maple/zsh.completion.mp");
-run_maple("maple/README.mp");
+//run_maple("maple/README.mp");
+function reduceFunctions(fns=[], init) {
+    return fns.reduce((r,e) => { return e(r); }, init);
+}
+
+let r  = reduceFunctions([(e)=>{ return e.join('\n');}, (e)=>{ return e.toUpperCase(); }], ["aaaa", "bbbb", "cccc"]);
+console.log(r);
