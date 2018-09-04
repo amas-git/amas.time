@@ -50,7 +50,7 @@ function joinObjects(os) {
 }
 
 function convertId(keys=[]) {
-    println(keys, "bind");
+    //println(keys, "bind");
     return keys.map((key)=>{
         if(key.match(/\d+/)) {
             return `$${key}`;
@@ -150,11 +150,12 @@ class Section {
             },{});
             return argv;
         }
-
-        //console.log(`apply: ${params} with ${args}`);
-        //let rs = {id:this.id, rs:[], sep: this.sep};
+        let rs = [];
         env.changeContext(argv(params, args));
-        let rs = this._eval(env);
+        rs.push(template(env, this.contents.join("\n")));
+        for(let s of this.sections) {
+            rs.push(s.eval(env));
+        }
         env.restoreContext();
 
         return Maple.printrs(rs);
@@ -226,10 +227,12 @@ class Section {
             rs.push(this.foreach(env));
         } else if(this.name === "part") {
             rs.push(this.part(env));
+        } else if(this.name === "func") {
+            /* SKIP */
         } else {
             rs.push(this.norm(env));
         }
-        println(`${this.name} -> ${rs}`, 'eval');
+        //println(`${this.name} -> ${rs}`, 'eval');
         return rs;
     }
 
@@ -324,8 +327,7 @@ class Maple {
             _ctx = {};
             _ctx[key] = ctx;
         }
-        this.__context.stack.push(_ctx);
-        println(this.__context, "+CTX");
+        this.__context.stack.push(_ctx); //println(this.__context, "+CTX");
     }
 
     restoreContext() {
