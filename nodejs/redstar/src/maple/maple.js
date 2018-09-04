@@ -20,13 +20,23 @@ var maple_path = [];
  *  8. **可以把section编译成js函数
  *  FIXME:
  *
+ *  结果正确 != 过程正确
  */
 
 
 
 function print(o, tag="") {
     if(o) {
-        console.error(tag+JSON.stringify(o, null, 2));
+        let c = JSON.stringify(o, null, 2).split("\n");
+        c = c.map((s) =>{ return `[${tag}] : ${s}`; } );
+        console.error(c.join("\n"));
+    }
+}
+function println(o, tag="") {
+    if(o) {
+        let c = JSON.stringify(o).split("\n");
+        c = c.map((s) =>{ return `[${tag}] : ${s}`; } );
+        console.error(c.join("\n"));
     }
 }
 
@@ -40,6 +50,7 @@ function joinObjects(os) {
 }
 
 function convertId(keys=[]) {
+    println(keys, "bind");
     return keys.map((key)=>{
         if(key.match(/\d+/)) {
             return `$${key}`;
@@ -82,13 +93,6 @@ function mktree(xs, root=xs[0], level="level", child='nodes') {
     return root;
 }
 
-const SectionType = Object.freeze({
-    FUNC: '@func',
-    NORM: '@norm',
-    PART: '@part',
-    LOOP: '@loop'
-});
-
 class Section {
     /**
      *
@@ -101,16 +105,12 @@ class Section {
         this.name     = name;
         this.type     = type;
         this.level    = level;
-        this.sections = [];
         this.contents = [];
         this.params   = [];
+        this.sections = [];
         this.sep      = "\n";
     }
 
-    isFunc() { return this.type === SectionType.FUNC; }
-    isNorm() { return this.type === SectionType.NORM; }
-    isPart() { return this.type === SectionType.PART; }
-    isLoop() { return this.type === SectionType.LOOP; }
 
     test(env) {
         let $expr = this.params.join("").trim();
@@ -120,6 +120,7 @@ class Section {
 
         let r = false;
         try {
+            println(env.__context, `[${$expr}]`);
             r = exeval(env.expose(), `return ${$expr};`);
         } catch (e) {
             error(e);
@@ -131,77 +132,6 @@ class Section {
 
     join(c='\n') {
         return this.contents.join(c);
-    }
-
-    static issue(section, rs, xs) {
-        if(_.isEmpty(xs)){
-            return;
-        }
-        rs.rs.push(xs);
-        return rs;
-    }
-
-    'eval@loop'(env) {
-        // @foreach x:xs
-        // @foreach xs -> @foreach $:xs
-        let rs = [];
-        if(_.isEmpty(this.params)) {
-            return rs;
-        }
-
-        let [xname, xs_name=xname] = this.params[0].split(':');
-        if(xname === xs_name) {
-            xname = '$';
-        }
-
-        let os = env.context[xs_name];
-
-        let LENGTH = Object.keys(os).length;
-        let n   = 0;
-
-        _.forEach(os, (value, key) => {
-            let $o = {};
-            n += 1;
-
-            $o[xname]    = value;
-            $o["$key"]   = key;
-            $o["$first"] = n === 1;
-            $o["$last"]  = n === LENGTH;
-
-            env.changeContext($o);
-            rs.push(this._eval(env));
-            env.restoreContext();
-        });
-        return rs;
-    }
-
-    'eval@part'(env) {
-        if(this.test(env)) {
-            return this._eval(env);
-        }
-        return [];
-    }
-
-    'eval@norm'(env) {
-        let r = env.handlers[this.name](env, this.contents, this.params) || [];
-        return r;
-    }
-
-    'eval@func'(env) { return []; }
-
-    _eval(env) {
-        let rs = [];
-        rs.push(template(env, this.join(this.sep)));
-        for (let s of this.sections) {
-            rs.push(s.eval(env));
-        }
-        return rs;
-    }
-
-    eval(env={}) {
-        //console.log(`EVAL : ${this.id}${this.type}`);
-        let rs =  this[`eval${this.type}`](env);
-        return rs;
     }
 
     /**
@@ -230,33 +160,96 @@ class Section {
         return Maple.printrs(rs);
     }
 
-    toFunction() {
+    part(env) {
+        let rs = [];
+        if (this.test(env)) {
+            rs.push(template(env, this.join("\n")));
+            this.sections.forEach((s) => {
+                rs.push(s.eval(env));
+            });
+        }
+        return rs;
+    }
 
+    norm(env) {
+        let rs = [...this.contents];
+        for(let section of this.sections) {
+            rs.push(section.eval(env));
+        }
+        let r = env.handlers[this.name](env, this, mcore.flat(rs)) || [];
+        return r;
+    }
+
+    foreach(env) {
+        // @foreach x:xs
+        // @foreach xs -> @foreach $:xs
+        let rs = [];
+        if (_.isEmpty(this.params)) {
+            return rs;
+        }
+
+        let [xname, xs_name = xname] = this.params[0].split(':');
+        if (xname === xs_name) {
+            xname = '$';
+        }
+
+        let os = env.context[xs_name];
+        let key = _.isArray(os) ? xs_name : "";
+        env.changeContext(os, key);
+
+
+        let LENGTH = Object.keys(os).length;
+        let n = 0;
+
+        _.forEach(os, (value, key) => {
+            let $o = {};
+            n += 1;
+            $o[xname]    = value;
+            $o["$key"]   = key;
+            $o["$first"] = n === 1;
+            $o["$last"]  = n === LENGTH;
+
+            env.changeContext($o);
+            rs.push(template(env, this.join("\n")));
+            for(let s of this.sections) {
+                rs.push(s.eval(env));
+            }
+            env.restoreContext();
+        });
+        env.restoreContext();
+        return mcore.flat(rs);
+    }
+
+    eval(env) {
+        let rs=[];
+        if(this.name === "foreach") {
+            rs.push(this.foreach(env));
+        } else if(this.name === "part") {
+            rs.push(this.part(env));
+        } else {
+            rs.push(this.norm(env));
+        }
+        println(`${this.name} -> ${rs}`, 'eval');
+        return rs;
     }
 
     static createRootNode() {
-        return new Section("root",SectionType.PART,2048);
+        return new Section("part", "part", 2048);
     }
-
 }
 
 const BASE_HANDLER = {
-    e(env, content, params) {
-        return template(env, content.join('\n'));
-    },
 
-    echo(env, content, params) {
-        return content.join('\n');
-    },
-
-    src(env, content, params) {
-        let name = params[0] || "main";
+    src(env, section, content) {
+        let name = section.params[0] || "main";
         env.src[name] = M(`module.exports={${content.join('\n')}}`);
+        print(env.src.main, name);
         env.changeContext(env.src.main);
+        return [];
     },
 
-    srcfile(env, content, params) {
-        let name = params[0] || "main";
+    srcfile(env, section, content) {
+        let name = section.params[0] || "main";
         let c = [];
 
         content.forEach( f => {
@@ -267,32 +260,35 @@ const BASE_HANDLER = {
         });
         env.src[name] = M(`module.exports={${c.join(",")}}`);
         env.changeContext(env.src.main);
+        return [];
     },
 
-    mod(env, content, params) {
-        let name = params[0];
+    mod(env, section, content) {
+        let name = section.params[0];
         let mod = M(`${content.join('\n')}`);
         if (name) {
             env.mod[name] = mod;
         } else {
             _.assign(env.functions, mod);
         }
-    },
-
-    zsh(env, content, params) {
-        let r = mcore.exec(content.join("\n"), "zsh");
-    },
-
-    debug(env, content, params) {
-        console.log(JSON.stringify(env.sections, null, 2));
+        return [];
     }
+    //
+    // zsh(env, content, params) {
+    //     let r = mcore.exec(content.join("\n"), "zsh");
+    //     return r;
+    // },
+    //
+    // debug(env, content, params) {
+    //     //console.log(JSON.stringify(env.sections, null, 2));
+    // }
 };
 
 
 
 class Maple {
     constructor(file) {
-        this.seq       = 0;
+        this.seq       = 1;
         this.file      = file;
         this.src       = {};    // data source
         this.mod       = {};    // modules
@@ -322,8 +318,14 @@ class Maple {
         return _.last(this.__context.stack);
     }
 
-    changeContext(ctx) {
-        this.__context.stack.push(ctx);  //console.log(`[CHANGE CTX +] : CTX = ${JSON.stringify(this.context)} TYPE:${(typeof this.context)}`);
+    changeContext(ctx, key="") {
+        let _ctx = ctx;
+        if(key) {
+            _ctx = {};
+            _ctx[key] = ctx;
+        }
+        this.__context.stack.push(_ctx);
+        println(this.__context, "+CTX");
     }
 
     restoreContext() {
@@ -345,34 +347,18 @@ class Maple {
     }
 
     addSection(name, params, level=0) {
-        let type = SectionType.TEXT;
-        if(!name) {
-            name = type = SectionType.PART;
-        } else if("foreach" == name) {
-            name = type = SectionType.LOOP;
-        } else if("func" == name) {
-            name = type = SectionType.FUNC;
-        } else {
-            type = SectionType.NORM;
-        }
-
-
-        this.currentSection = new Section(name, type, level);
+        name = name || "part";
+        this.currentSection = new Section(name, name, level);
         this.currentSection.id = this.seq++;
         this.currentSection.params = params;
         this.sections.push(this.currentSection);
 
-        if(this.currentSection.isFunc()) {
+        if(name === "func") {
             let [fname,  ...params] = this.currentSection.params;
             let section = this.currentSection;
             this.addFunction(fname,(...args) => {
                 return section.apply(this, params, args);
             }, "");
-        } else if(this.currentSection.isLoop()) {
-            let sep = params.length > 1 ? params[1] : null;
-            if(sep) {
-                this.currentSection.sep = sep;
-            }
         }
     }
 
@@ -393,16 +379,14 @@ class Maple {
 
     tree() {
         this.root = mktree(this.sections, this.sections[0], "level", "sections");
-        //print(this.sections);
+        //print(this.root);
     }
 
 
     eval() {
         let rs = this.root.eval(this);
-        //let text = Maple.printrs(rs);
-        print(rs);
-        //console.log(Maple.printrs(rs));
-        //console.error(text);
+        print("==============================");
+        print(rs, "RS");
         return rs;
     }
 
@@ -455,9 +439,24 @@ function readline(file, cb) {
     });
 }
 
+function x(a,b) {
+    function m() {
+        return a+b;
+    }
+
+    function n() {
+        return a*b;
+    }
+    return {m,n};
+}
+
+//console.log(x(1,2).n());
 
 //run_maple("maple/zsh.completion.mp");
 run_maple("maple/README.mp");
+
+
+// print(ys);
 // function reduceFunctions(fns=[], init) {
 //     return fns.reduce((r,e) => { return e(r); }, init);
 // }
