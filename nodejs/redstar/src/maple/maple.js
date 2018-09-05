@@ -93,6 +93,15 @@ function mktree(xs, root=xs[0], level="level", child='nodes') {
     return root;
 }
 
+function push(rs=[]) {
+    return function (x) {
+        if(!_.isEmpty(x)) {
+            rs.push(x);
+        }
+        return rs;
+    };
+}
+
 class Section {
     /**
      *
@@ -150,26 +159,22 @@ class Section {
             },{});
             return argv;
         }
-        let rs = [];
         env.changeContext(argv(params, args));
-        rs.push(template(env, this.contents.join("\n")));
-        for(let s of this.sections) {
-            rs.push(s.eval(env));
-        }
+        let rs = this.map(env);
         env.restoreContext();
-
         return Maple.printrs(rs);
     }
 
-    part(env) {
-        let rs = [];
-        if (this.test(env)) {
-            rs.push(template(env, this.join("\n")));
-            this.sections.forEach((s) => {
-                rs.push(s.eval(env));
-            });
-        }
+    map(env, rs=[]) {
+        rs.push(template(env, this.join("\n")));
+        this.sections.forEach((s) => {
+            rs.push(s.eval(env));
+        });
         return rs;
+    }
+
+    part(env) {
+        return (this.test(env)) ? this.map(env) : [];
     }
 
     norm(env) {
@@ -211,10 +216,7 @@ class Section {
             $o["$last"]  = n === LENGTH;
 
             env.changeContext($o);
-            rs.push(template(env, this.join("\n")));
-            for(let s of this.sections) {
-                rs.push(s.eval(env));
-            }
+            this.map(env, rs);
             env.restoreContext();
         });
         env.restoreContext();
