@@ -96,17 +96,15 @@ class Section {
         return rs;
     }
 
-    static createRootNode() {
-        return new Section("part", "part", 2048);
+    static ROOT() {
+        return new Section(0, "part", 2048);
     }
 }
 
 const BASE_HANDLER = {
     func(env, section) {
         let [fname,  ...params] = section.params;
-        let fn = (...args) => {
-            return section.apply(env, params, args);
-        };
+        let fn = (...args) => { return section.apply(env, params, args); };
         env.addFunction(fname, fn, "");
         return [];
     },
@@ -204,8 +202,6 @@ class Maple {
         this.sections  = [];
         this.functions = {};
         this.__context = {stack:[]};
-        this.currentSection = Section.createRootNode();
-        this.sections.push(this.currentSection);
         this.mpath     = [...maple_path];
         this.export    = {
             $src       : this.src,
@@ -218,6 +214,9 @@ class Maple {
         if(scriptd) {
             this.mpath.unshift(scriptd);
         }
+
+        this.currentSection = Section.ROOT();
+        this.sections.push(this.currentSection);
     }
 
     get context() {
