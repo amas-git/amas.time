@@ -29,12 +29,12 @@ function walk(o, f, context = {path:[], level:0}) {
     }
 }
 
-function exec(content, cmd, ...argv) {
+async function exec(content, cmd, ...argv) {
     const proc = spawn(cmd, [...argv]);
     proc.stdout.setEncoding("utf8");
     proc.stdin.setEncoding("utf8");
 
-    new Promise((resolve,reject) => {
+    return new Promise((resolve,reject) => {
         try {
             let rs = [];
             proc.stdin.write(content);
@@ -50,8 +50,6 @@ function exec(content, cmd, ...argv) {
         } catch (e) {
             reject({status: -1, error: e.toString()});
         }
-    }).then(({status, rs}) => {
-        console.log(rs.join("\n"));
     });
 }
 

@@ -158,7 +158,8 @@ const BASE_HANDLER = {
         return [];
     },
 
-    srcfile(env, section, content) {
+    srcfile(env, section) {
+        let content = mcore.flat(section.map(env));
         let name = section.params[0] || "main";
         let c = [];
 
@@ -173,7 +174,8 @@ const BASE_HANDLER = {
         return [];
     },
 
-    mod(env, section, content) {
+    mod(env, section) {
+        let content = mcore.flat(section.map(env));
         let name = section.params[0];
         let mod = M(`${content.join('\n')}`);
         if (name) {
@@ -184,8 +186,10 @@ const BASE_HANDLER = {
         return [];
     },
 
-    zsh(env, section, content) {
-        let r = mcore.exec(content.join("\n"), "zsh");
+    async zsh(env, section) {
+        let content = mcore.flat(section.map(env));
+        let r = await mcore.exec(content.join("\n"), "zsh");
+        console.log(r);
         return [r];
     }
 };
@@ -275,8 +279,8 @@ class Maple {
         return this;
     }
 
-    eval() {
-        let rs = this.root.eval(this);
+    async eval() {
+        let rs = await this.root.eval(this);
         print("==============================");
         print(rs, "RS");
         return rs;
@@ -287,7 +291,7 @@ class Maple {
     }
 }
 
-function run_maple(file) {
+async function run_maple(file) {
     const maple = new Maple(file);
     maple.addFunction("L",(t) => t.toUpperCase(),"");
 
@@ -330,16 +334,11 @@ function readline(file, cb) {
     });
 }
 
-//console.log(x(1,2).n());
 
-//run_maple("maple/zsh.completion.mp");
-run_maple("maple/README.mp");
-//console.log(_.pick({a:1, b:2}, 'ab'));
 
-// print(ys);
-// function reduceFunctions(fns=[], init) {
-//     return fns.reduce((r,e) => { return e(r); }, init);
-// }
-//
-// let r  = reduceFunctions([(e)=>{ return e.join('\n');}, (e)=>{ return e.toUpperCase(); }], ["aaaa", "bbbb", "cccc"]);
-// console.log(r);
+
+(async () => {
+    await run_maple("maple/README.mp");
+    // let r = await mcore.exec("ls /", "zsh");
+    // print(r);
+})();
