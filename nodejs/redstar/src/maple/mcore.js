@@ -1,6 +1,7 @@
 const spawn = require('child_process').spawn;
 const fs = require('fs');
 const path = require('path');
+const _ = require('lodash');
 const proc = require('process');
 
 const type = function(obj) {
@@ -54,6 +55,25 @@ function exec(content, cmd, ...argv) {
     });
 }
 
+function mktree(xs, root=xs[0], level="level", child='nodes') {
+    function parentOf(xs, x, anchor) {
+        for(let i=anchor-1; i>=0; i--) {
+            if(xs[i][level] > x[level]) { // TODO: override with isParent function & export it
+                return xs[i];
+            }
+        }
+        return null;
+    }
+
+    for(let i=1; i<xs.length; ++i) {
+        let p = parentOf(xs, xs[i], i);
+        p[child].push(xs[i]);
+    }
+
+    //console.error(root);
+    return root;
+}
+
 function object(maple_path, name) {
     let mpath   = [];
     let scriptd = path.dirname(name);
@@ -81,13 +101,35 @@ function search_target(search_path, name) {
     return undefined;
 }
 
-module.exports = {
-    walk,
-    exec,
-    flat,
-    object,
-    type
-};
+function joinObjects(os) {
+    let r = os.reduce((r,e) => { return _.assign(r, e); }, {});
+    return r;
+}
+
+function convertId(keys=[]) {
+    //println(keys, "bind");
+    return keys.map((key)=>{
+        if(key.match(/\d+/)) {
+            return `$${key}`;
+        }
+        // TODO: support more convertion
+        // TODO: when the array keys is large, only keep 9 id
+        return key;
+    });
+}
+
+function mcall(os, code) {
+    return new Function(convertId(Object.keys(os)), code).apply(null, Object.values(os));
+}
+
+function exeval($os, $code) {
+    return mcall(joinObjects($os), `${$code}`);
+}
+
+function template(env, template) {
+    let $T       = template.replace(/`/g, '\\`');
+    return exeval(env.expose(), `return \`${$T}\`;`);
+}
 
 function flat(input){
     const stack = [...input];
@@ -106,44 +148,18 @@ function flat(input){
     return res.reverse();
 }
 
-
 function shuffle(xs=[]) {
     return xs.sort(() => { return Math.random() - 0.5; });
 }
 
-function _exeval($os, $code) {
-    return eval(expose($os, $code));
-}
-
-/**
- * @param $stack object array
- * @param $code code to evaluated under the given stack
- * @returns {string} result code to eval
- */
-function expose($os, $code) {
-    function convertId(keys) {
-        return keys.map((key)=>{
-            if(key.match(/\d+/)) {
-                return `$${key}`;
-            }
-            // TODO: support more convertion
-            // TODO: when the array keys is large, only keep 9 id
-            return key;
-        });
-    }
-    let rs  = [];
-    let level = 0;
-
-    $os.forEach((e,i) => {
-        if(_.isEmpty(e)) return;
-
-        let ids = convertId(Object.keys(e));
-        if(_.isEmpty(ids)) return;
-
-        rs.push(`let {${ids.join(',')}} = $os[${i}];{`);
-        level+=1;
-    });
-    rs.push($code);
-    rs.push("}".repeat(level));
-    return rs.join("");
-}
+module.exports = {
+    exeval,
+    template,
+    mktree,
+    walk,
+    exec,
+    flat,
+    object,
+    type,
+    shuffle
+};
