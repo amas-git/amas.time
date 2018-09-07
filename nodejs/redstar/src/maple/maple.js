@@ -191,7 +191,7 @@ const BASE_HANDLER = {
     zsh(env, section) {
         let rs = section.mapFlat(env);
         let r = mcore.exec(rs.join("\n"), "zsh");
-        return r;
+        return [r];
     }
 };
 
