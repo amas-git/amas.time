@@ -135,6 +135,12 @@ function shuffle(xs=[]) {
     return xs.sort(() => { return Math.random() - 0.5; });
 }
 
+function push(xs, x) {
+    if(x) {
+        xs.push(x);
+    }
+}
+
 module.exports = {
     exeval,
     template,
@@ -145,5 +151,6 @@ module.exports = {
     object,
     type,
     shuffle,
-    write
+    write,
+    push
 };

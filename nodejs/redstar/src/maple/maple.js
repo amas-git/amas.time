@@ -24,16 +24,17 @@ var maple_path = [];
  */
 
 
+const DEBUG = false;
 
 function print(o, tag="") {
-    if(o) {
+    if(o && DEBUG) {
         let c = JSON.stringify(o, null, 2).split("\n");
         c = c.map((s) =>{ return `[${tag}] : ${s}`; } );
         console.error(c.join("\n"));
     }
 }
 function println(o, tag="") {
-    if(o) {
+    if(o && DEBUG) {
         let c = JSON.stringify(o).split("\n");
         c = c.map((s) =>{ return `[${tag}] : ${s}`; } );
         console.error(c.join("\n"));
@@ -49,6 +50,7 @@ class Section {
         this.contents = [];
         this.params   = params;
         this.sections = [];
+        this.time     = 0;
         this.sep      = "\n";
     }
 
@@ -82,7 +84,7 @@ class Section {
     }
 
     map(env, rs=[]) {
-        rs.push(mcore.template(env, this.join("\n")));
+        mcore.push(rs, mcore.template(env, this.join("\n")));
         this.sections.forEach((s) => {
             rs.push(s.eval(env));
         });
@@ -94,7 +96,10 @@ class Section {
     }
 
     eval(env) {
+        let start = Date.now();
         let rs = env.handlers[this.name](env, this);
+        let time = Date.now() - start;
+        this.time = time;
         return rs;
     }
 
@@ -102,6 +107,7 @@ class Section {
         return new Section(0, "part", 2048);
     }
 }
+
 
 const BASE_HANDLER = {
     func(env, section) {
@@ -116,41 +122,42 @@ const BASE_HANDLER = {
     },
 
     foreach(env, section) {
-        // @foreach x:xs
-        // @foreach xs -> @foreach $:xs
-        // @foreach x:_range(1,100)
         let rs = [];
-        if (_.isEmpty(section.params)) {
+
+        function getIterable() {
+            // @foreach x:xs
+            // @foreach xs -> @foreach $:xs
+            // @foreach x:_range(1,100)
+
+            if (_.isEmpty(section.params)) {
+                return undefined;
+            }
+
+            let forExpr = mcore.template(env, section.params.join("").trim());
+            let match   = /([_]*[a-zA-Z0-9_]+):(.*)/.exec(forExpr.trim());
+            let xname   = "$";
+            let expr    = forExpr;
+
+            if(match) {
+                [,xname, expr] = match;
+                expr  = expr  || forExpr;
+            }
+
+            let os = env.context[expr];
+            if(!os) {
+                os = eval(expr);
+            }
+            return {xname: xname, os: os};
+        }
+
+        let {xname, os} = getIterable();
+        if(!os) {
             return rs;
         }
 
-        let forExpr = section.params.join("").trim();
-        let match = /([_]*[a-zA-Z0-9_]+):(.*)/.exec(forExpr.trim());
-        let xname = "$";
-        let expr  = forExpr;
-
-        if(match) {
-            [,xname, expr] = match;
-            xname = xname  || "$";
-            expr  = expr   || forExpr;
-        }
-
-        let os = null;
-        print(expr, "CHANGE CTX");
-        if(env.context.hasOwnProperty(expr)) {
-            env.changeContextToChild(expr);
-            os = env.context[expr];
-        } else {
-            os = eval(expr);
-            env.changeContext(os);
-        }
-        // println(`${forExpr} : ${xname} : ${expr}`,"for");
-        // env.changeContextToChild(xs_name);
-
-
+        env.changeContext(os);
         let LENGTH = Object.keys(os).length;
         let n = 0;
-
 
         _.forEach(os, (value, key) => {
             let $o = {};
@@ -236,7 +243,7 @@ class Maple {
             $src       : this.src,
             $mod       : this.mod,
             $var       : this.var,
-            $func      : this.functions,
+            $func      : this.functions
         };
 
         let scriptd = path.dirname(file);
@@ -311,6 +318,11 @@ class Maple {
         return rs;
     }
 
+    showTime() {
+        this.sections.forEach((s) => {
+            console.log(`${s.id} : ${s.time}` );
+        });
+    }
     static printrs(xs) {
         return mcore.flat(xs).join("\n");
     }
@@ -324,6 +336,7 @@ async function run_maple(file) {
         if(line == null) {
             maple.tree();
             console.log(Maple.printrs(maple.eval()));
+            maple.showTime();
             return;
         }
 
