@@ -83,8 +83,8 @@ class Section {
         return Maple.printrs(rs);
     }
 
-    map(env, rs=[]) {
-        mcore.push(rs, mcore.template(env, this.join("\n")));
+    map(env, rs=[], template=true) {
+        mcore.push(rs, mcore.template(env, this.join("\n"), template));
         this.sections.forEach((s) => {
             rs.push(s.eval(env));
         });
@@ -201,7 +201,7 @@ const BASE_HANDLER = {
     },
 
     mod(env, section) {
-        let content = mcore.flat(section.map(env));
+        let content = mcore.flat(section.map(env, [], false));
         let name = section.params[0];
         let mod = M(`${content.join('\n')}`);
         if (name) {
@@ -374,7 +374,8 @@ function readline(file, cb) {
 
 
 (async () => {
-   await run_maple("maple/README.mp");
+   //await run_maple("maple/README.mp");
+   await run_maple("maple/orm.mp");
     // let r = await mcore.exec("ls /", "zsh");
     // print(r);
 })();

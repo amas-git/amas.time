@@ -109,7 +109,10 @@ function exeval($os, $code) {
     return mcall(joinObjects($os), `${$code}`);
 }
 
-function template(env, template) {
+function template(env, template, enabled=true) {
+    if(!enabled) {
+        return template;
+    }
     let $T       = template.replace(/`/g, '\\`');
     return exeval(env.expose(), `return \`${$T}\`;`);
 }
