@@ -192,6 +192,13 @@ const BASE_HANDLER = {
         let rs = section.mapFlat(env);
         let r = mcore.exec(rs.join("\n"), "zsh");
         return [r];
+    },
+
+    save(env, section) {
+        let rs = section.mapFlat(env);
+        let name = section.params[0];
+        mcore.write(name, Maple.printrs(rs));
+        return [];
     }
 };
 
@@ -280,8 +287,8 @@ class Maple {
         return this;
     }
 
-    async eval() {
-        let rs = await this.root.eval(this);
+    eval() {
+        let rs = this.root.eval(this);
         print("==============================");
         print(rs, "RS");
         return rs;
@@ -299,7 +306,7 @@ async function run_maple(file) {
     readline(file, (line, num) => {
         if(line == null) {
             maple.tree();
-            maple.eval();
+            console.log(Maple.printrs(maple.eval()));
             return;
         }
 

@@ -34,7 +34,9 @@ function exec(cmd, shell="/bin/sh") {
     return r;
 }
 
-
+function write(file, data) {
+    fs.writeFileSync(file, data, {encoding:'utf8',flag:'w'});
+}
 
 function mktree(xs, root=xs[0], level="level", child='nodes') {
     function parentOf(xs, x, anchor) {
@@ -142,5 +144,6 @@ module.exports = {
     flat,
     object,
     type,
-    shuffle
+    shuffle,
+    write
 };
