@@ -43,7 +43,7 @@ function println(o, tag="") {
 
 class Section {
     constructor(id, name, level, params=[]) {
-        this.id       = 0;
+        this.id       = id;
         this.name     = name;
         this.level    = level;
         this.contents = [];
@@ -89,10 +89,12 @@ class Section {
         return rs;
     }
 
+    mapFlat(env, rs=[]) {
+        return mcore.flat(this.map(env,rs));
+    }
 
     eval(env) {
         let rs = env.handlers[this.name](env, this);
-        //println(`${this.name} -> ${rs}`, 'eval');
         return rs;
     }
 
@@ -150,20 +152,20 @@ const BASE_HANDLER = {
     },
 
     src(env, section) {
-        let name    = section.params[0] || "main";
-        let content = mcore.flat(section.map(env));
-        env.src[name] = M(`module.exports={${content.join('\n')}}`);
+        let name = section.params[0] || "main";
+        let rs   = section.mapFlat(env);
+        env.src[name] = M(`module.exports={${rs.join('\n')}}`);
         print(env.src.main, name);
         env.changeContext(env.src.main);
         return [];
     },
 
     srcfile(env, section) {
-        let content = mcore.flat(section.map(env));
+        let rs = section.mapFlat(env);
         let name = section.params[0] || "main";
         let c = [];
 
-        content.forEach( f => {
+        rs.forEach( f => {
             let text = mcore.object(env.mpath, f);
             if(text) {
                 c.push(text);
@@ -186,11 +188,10 @@ const BASE_HANDLER = {
         return [];
     },
 
-    async zsh(env, section) {
-        let content = mcore.flat(section.map(env));
-        let r = await mcore.exec(content.join("\n"), "zsh");
-        console.log(r);
-        return [r];
+    zsh(env, section) {
+        let rs = section.mapFlat(env);
+        let r = mcore.exec(rs.join("\n"), "zsh");
+        return r;
     }
 };
 
@@ -333,8 +334,6 @@ function readline(file, cb) {
         cb(null,num++);
     });
 }
-
-
 
 
 (async () => {

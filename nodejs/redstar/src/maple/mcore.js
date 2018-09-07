@@ -1,4 +1,4 @@
-const spawn = require('child_process').spawn;
+const execSync = require('child_process').execSync;
 const fs = require('fs');
 const path = require('path');
 const _ = require('lodash');
@@ -29,29 +29,12 @@ function walk(o, f, context = {path:[], level:0}) {
     }
 }
 
-async function exec(content, cmd, ...argv) {
-    const proc = spawn(cmd, [...argv]);
-    proc.stdout.setEncoding("utf8");
-    proc.stdin.setEncoding("utf8");
-
-    return new Promise((resolve,reject) => {
-        try {
-            let rs = [];
-            proc.stdin.write(content);
-            proc.stdin.end();
-            proc.stdout.on("data", function (data) {
-                rs.push(data.toString());
-                //console.log(data)
-            });
-            proc.on("close", function (status) {
-                resolve({status:status, rs: rs});
-            });
-
-        } catch (e) {
-            reject({status: -1, error: e.toString()});
-        }
-    });
+function exec(cmd, shell="/bin/sh") {
+    let r = execSync(cmd, { shell:shell, encoding:"utf8"});
+    return r;
 }
+
+
 
 function mktree(xs, root=xs[0], level="level", child='nodes') {
     function parentOf(xs, x, anchor) {
