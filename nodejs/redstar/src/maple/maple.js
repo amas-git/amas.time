@@ -336,7 +336,7 @@ async function run_maple(file) {
         if(line == null) {
             maple.tree();
             console.log(Maple.printrs(maple.eval()));
-            maple.showTime();
+            //maple.showTime();
             return;
         }
 
