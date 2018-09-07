@@ -118,18 +118,35 @@ const BASE_HANDLER = {
     foreach(env, section) {
         // @foreach x:xs
         // @foreach xs -> @foreach $:xs
+        // @foreach x:_range(1,100)
         let rs = [];
         if (_.isEmpty(section.params)) {
             return rs;
         }
 
-        let [xname, xs_name = xname] = section.params[0].split(':');
-        if (xname === xs_name) {
-            xname = '$';
+        let forExpr = section.params.join("").trim();
+        let match = /([_]*[a-zA-Z0-9_]+):(.*)/.exec(forExpr.trim());
+        let xname = "$";
+        let expr  = forExpr;
+
+        if(match) {
+            [,xname, expr] = match;
+            xname = xname  || "$";
+            expr  = expr   || forExpr;
         }
 
-        env.changeContextToChild(xs_name);
-        let os = env.context[xs_name];
+        let os = null;
+        print(expr, "CHANGE CTX");
+        if(env.context.hasOwnProperty(expr)) {
+            env.changeContextToChild(expr);
+            os = env.context[expr];
+        } else {
+            os = eval(expr);
+            env.changeContext(os);
+        }
+        // println(`${forExpr} : ${xname} : ${expr}`,"for");
+        // env.changeContextToChild(xs_name);
+
 
         let LENGTH = Object.keys(os).length;
         let n = 0;
@@ -196,7 +213,7 @@ const BASE_HANDLER = {
 
     save(env, section) {
         let rs = section.mapFlat(env);
-        let name = section.params[0];
+        let name = mcore.template(env, section.params[0].trim());
         mcore.write(name, Maple.printrs(rs));
         return [];
     }
@@ -213,7 +230,7 @@ class Maple {
         this.handlers  = BASE_HANDLER;
         this.sections  = [];
         this.functions = {};
-        this.__context = {stack:[]};
+        this.__context = {stack:[{}]};
         this.mpath     = [...maple_path];
         this.export    = {
             $src       : this.src,
@@ -344,7 +361,7 @@ function readline(file, cb) {
 
 
 (async () => {
-    await run_maple("maple/README.mp");
+   await run_maple("maple/README.mp");
     // let r = await mcore.exec("ls /", "zsh");
     // print(r);
 })();
