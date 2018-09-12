@@ -328,7 +328,7 @@ class Maple {
     }
 }
 
-async function run_maple(file) {
+function run_maple(file) {
     const maple = new Maple(file);
     maple.addFunction("L",(t) => t.toUpperCase(),"");
 
@@ -373,9 +373,10 @@ function readline(file, cb) {
 }
 
 
-(async () => {
-   //await run_maple("maple/README.mp");
-   await run_maple("maple/orm.mp");
-    // let r = await mcore.exec("ls /", "zsh");
-    // print(r);
-})();
+run_maple("maple/orm.mp");
+// (async () => {
+//    //await run_maple("maple/README.mp");
+//    await run_maple("maple/orm.mp");
+//     // let r = await mcore.exec("ls /", "zsh");
+//     // print(r);
+// })();
