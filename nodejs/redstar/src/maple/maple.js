@@ -124,6 +124,13 @@ const BASE_HANDLER = {
     foreach(env, section) {
         let rs = [];
 
+        function getsub(o, expr) {
+            let chunk = expr.split(".");
+            let r = o;
+            chunk.forEach( c => r = r[c]);
+            return r;
+        }
+
         function getIterable() {
             // @foreach x:xs
             // @foreach xs -> @foreach $:xs
@@ -142,8 +149,8 @@ const BASE_HANDLER = {
                 [,xname, expr] = match;
                 expr  = expr  || forExpr;
             }
-
-            let os = env.context[expr];
+            // FIXME: 当对象为a.b这种形式的时候会无法获取
+            let os = getsub(env.context, expr);
             if(!os) {
                 os = eval(expr);
             }
@@ -181,6 +188,14 @@ const BASE_HANDLER = {
         let rs   = section.mapFlat(env);
         env.src[name] = M(`module.exports={${rs.join('\n')}}`);
         print(env.src.main, name);
+        env.changeContext(env.src.main);
+        return [];
+    },
+
+    json(env, section) {
+        let name      = section.params[0] || "main";
+        let rs        = section.mapFlat(env);
+        env.src[name] = JSON.parse(rs.join(""));
         env.changeContext(env.src.main);
         return [];
     },
@@ -373,4 +388,5 @@ function readline(file, cb) {
     });
 }
 
-run_maple("maple/orm.mp");
+run_maple("maple/num.mp");
+
