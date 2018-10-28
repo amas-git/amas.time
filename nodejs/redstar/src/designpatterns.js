@@ -5,8 +5,9 @@ function randomIn(min, max) {
     return Math.round(Math.random() * (max - min))  + min;
 }
 
+const TAGS = new Set(["g_memory"]);
 function print(tag, o) {
-    console.log(`${tag} : ${typeof o === 'string' ? o : JSON.stringify(o) }`);
+    TAGS.has(tag) && console.log(`${tag.toUpperCase()} : ${typeof o === 'string' ? o : JSON.stringify(o) }`);
 }
 
 class Task {
@@ -70,22 +71,22 @@ let task3 = new Task("task3");
 // });
 
 //
-// task1._process("init")
-//     .then(result => {
-//         return task2._process(result);
-//     })
-//     .then(result => {
-//         return task3._process(result);
-//     }).then((result) => {
-//         print("ALL DONE", result);
-//     });
+task1._process("init")
+    .then(result => {
+        return task2._process(result);
+    })
+    .then(result => {
+        return task3._process(result);
+    }).then((result) => {
+        //print("ALL DONE", result);
+    });
 
-// (async () => {
-//     let r1 = await task1._process("init");
-//     let r2 = await task2._process(r1);
-//     let r3 = await task3._process(r2);
-//     print("ALL DONE", r3);
-// })();
+(async () => {
+    let r1 = await task1._process("init");
+    let r2 = await task2._process(r1);
+    let r3 = await task3._process(r2);
+    print("ALL DONE", r3);
+})();
 
 const g = runGenorator();
 function * runGenorator() {
@@ -156,9 +157,125 @@ function cp(from, to) {
         const fs = require('fs');
         let [err, data] = yield fs.readFile(from, "utf8", callback);
         if(data) {
-
+            // console.log(data);
         }
    });
 }
 
 cp("/etc/hosts", "");
+
+
+function * add() {
+    let a = yield;
+    let b = yield;
+    return a + b;
+}
+
+let Add = add();
+print("",Add.next());
+print("",Add.next(1));
+print("",Add.next(2));
+
+
+
+function * g_memory(value) {
+    while (true) yield value;
+}
+
+let cache = g_memory(100);
+
+print("g_memory", `cache=${cache.next().value}`);
+
+const fs = require("fs");
+const stream = require("stream");
+
+class Yes extends stream.Readable {
+
+    constructor(value, size) {
+        super();
+        this.value = value;
+        this.size  = size;
+        this.counter = 0;
+    }
+
+    _read(size) {
+        if(this.counter == this.size) {
+            this.push(null);
+            return;
+        }
+        this.push(this.value);
+        this.counter++;
+    }
+
+}
+
+class Echo extends stream.Transform {
+    constructor() {
+        super({encoding: "utf8", highWaterMark : 1024});
+    }
+
+    _transform(chunk, encoding, callback) {
+        this.push(chunk.toString().toUpperCase());
+        callback();
+    }
+
+    _flush(callback) {
+        this.push("GAME OVER");
+        callback();
+    }
+}
+
+class R1 extends stream.Readable {
+    constructor() {
+        super();
+    }
+
+    _read(size) {
+
+    }
+}
+
+class W1 extends stream.Writable {
+    _write(chunk, encoding, callback) {
+        //process.stdout.write(chunk.toString().toUpperCase());
+        this.writableBuffer.push("aaa");
+        callback();
+    }
+}
+//class UpperCaseStream extends s
+
+
+let yes = new Yes("o\n", 100);
+let echo = new Echo();
+
+//process.stdin.pipe(echo).pipe(process.stdout);
+
+
+//process.stdin.pipe(new R1()).pipe(process.stdout);
+
+
+var proxy = new Proxy({a: 10}, {
+    get: function(target, property, receiver) {
+
+        console.log(target[property]);
+        return 35;
+    }
+});
+
+
+function watchConstruct(obj) {
+    return new Proxy(obj, { construct(target, args) {
+            console.log(`new ${target}`);
+            return new target(...args);
+        }});
+}
+
+class A {
+    constructor(name, age) {
+        this.name = name;
+        this.age = age;
+    }
+
+}
+
+new (watchConstruct(A)("name1",17));
