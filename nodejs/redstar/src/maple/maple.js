@@ -1,4 +1,3 @@
-//const minimatch = require("minimatch")
 const M = require('./M');
 const _ = require('lodash');
 const path = require('path');
@@ -199,6 +198,14 @@ const BASE_HANDLER = {
         return [];
     },
 
+    yaml(env, section) {
+        let name      = section.params[0] || "main";
+        let rs        = section.mapFlat(env);
+        env.src[name] = mcore.objectFromYamlString(rs.join(""));
+        env.changeContext(env.src.main);
+        return [];
+    },
+
     srcfile(env, section) {
         let rs = section.mapFlat(env);
         let name = section.params[0] || "main";
@@ -388,4 +395,6 @@ function readline(file, cb) {
 }
 
 
-run_maple("maple/orm.mp");
+//run_maple("maple/orm.mp");
+run_maple("maple/test_yaml.mp");
+

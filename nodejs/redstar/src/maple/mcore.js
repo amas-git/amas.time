@@ -3,29 +3,55 @@ const fs = require('fs');
 const path = require('path');
 const _ = require('lodash');
 const proc = require('process');
+const yaml = require('js-yaml');
 
 const type = function(obj) {
     return ({}).toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase();
 };
 
+
+function e(e) {
+    console.error(e);
+}
+
+function objectFromYamlString(string) {
+    return yaml.safeLoad(string);
+}
+
+function objectFromYamlFile(file) {
+    let o = undefined;
+    try {
+        o = objectFromYamlFile(fs.readFileSync(file));
+    } catch (e) {
+        e(e);
+    }
+    return o;
+}
 /**
  * 遍历指定的objects
  * @param o
  * @param f
  * @param context
  */
-function walk(o, f, context = {path:[], level:0}) {
+function walk(o, f, path="") {
+    function isObject(obj) {
+        return (typeof obj === "object" && obj !== null) || typeof obj === "function";
+    }
+
     if((o === null) || Object.keys(o).length === 0 || (typeof o === 'string') || (typeof o === 'number')) {
         return;
     }
 
-    for(let k in o) {
-        let ctx = {path: [...context.path, k], level: context.level+1};
+    let keys = Object.keys(o);
 
+    for(let k of keys) {
         if(f) {
-            f(ctx, k, o[k]);
+            let value = Array.isArray(o[k]) ? Object.keys(o[k]).join(":") : o[k];
+            if(!isObject(value)) {
+                f(`${path}/${k}`, k, value);
+            }
         }
-        walk(ctx, o[k], f);
+        walk(o[k],f,`${path}/${k}`);
     }
 }
 
@@ -153,5 +179,7 @@ module.exports = {
     type,
     shuffle,
     write,
-    push
+    push,
+    objectFromYamlFile,
+    objectFromYamlString
 };

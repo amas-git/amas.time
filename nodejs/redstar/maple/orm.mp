@@ -4,7 +4,7 @@ dbpath: "test.db",
 scheme: {
     peoples: [
         {name:"name", type:"string:256", primaryKey:true},
-        {name:"ids",   type:"int", primaryKey: true},
+        {name:"ids",  type:"int", primaryKey: true},
         {name:"age",  type:"int", unique: true},
     ]
 }
