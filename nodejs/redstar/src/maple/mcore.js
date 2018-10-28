@@ -139,9 +139,7 @@ function shuffle(xs=[]) {
 }
 
 function push(xs, x) {
-    if(x) {
-        xs.push(x);
-    }
+    x && xs.push(x);
 }
 
 module.exports = {
