@@ -1,4 +1,3 @@
-//const minimatch = require("minimatch")
 const M = require('./M');
 const _ = require('lodash');
 const path = require('path');
@@ -179,7 +178,6 @@ const BASE_HANDLER = {
             section.map(env, rs);
             env.restoreContext();
         });
-
         env.restoreContext();
         return mcore.flat(rs);
     },
@@ -197,6 +195,14 @@ const BASE_HANDLER = {
         let name      = section.params[0] || "main";
         let rs        = section.mapFlat(env);
         env.src[name] = JSON.parse(rs.join(""));
+        env.changeContext(env.src.main);
+        return [];
+    },
+
+    yaml(env, section) {
+        let name      = section.params[0] || "main";
+        let rs        = section.mapFlat(env);
+        env.src[name] = mcore.objectFromYamlString(rs.join(""));
         env.changeContext(env.src.main);
         return [];
     },
@@ -389,5 +395,6 @@ function readline(file, cb) {
     });
 }
 
-run_maple("maple/koa.mp");
+//run_maple("maple/orm.mp");
+run_maple("maple/test_yaml.mp");
 

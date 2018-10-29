@@ -8,6 +8,7 @@
     "cheerio": "^1.0.0-rc.2",
     "crypo": "^0.1.4",
     "eslint": "^5.4.0",
+    "js-yaml": "^3.12.0",
     "koa": "^2.5.2",
     "koa-bodyparser": "^4.2.1",
     "koa-router": "^7.4.0",
