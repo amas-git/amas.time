@@ -33,6 +33,7 @@ function print(o, tag="") {
         console.error(c.join("\n"));
     }
 }
+
 function println(o, tag="") {
     if(o && DEBUG) {
         let c = JSON.stringify(o).split("\n");
@@ -388,5 +389,5 @@ function readline(file, cb) {
     });
 }
 
-run_maple("maple/num.mp");
+run_maple("maple/koa.mp");
 

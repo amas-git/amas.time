@@ -179,3 +179,74 @@ class Fcoin {
 // // console.log(fcoin.calc_unlock(1));
 // // console.log(fcoin.calc_unlock(1));
 // // console.log(fcoin.calc_unlock(1));
+
+/*
+# bind host: 52.76.255.233 uangme.sta.sms-server.com
+function bitrue.sendsms() {
+    local API_SMS=http://52.76.255.233:33226/sms/api/smsSend
+    #local API_SMS=http://uangme.sta.sms-server.com:33226/sms/api/smsSend
+    local source_id=cm_wallet
+    local ctime=$(date +"%s")
+    local content=$(<&0)
+    local key=34ac56b47d081ef6797adc8b3a033c64
+    local sign=$(MD5 "${key}${content}${ctime}")
+    local mobiles=${1:=13810625765}
+
+    local body='{
+    "server_type": 5,
+    "mobiles"    : "$mobiles",
+    "sign"       : "$sign",
+    "content"    : "$content",
+    "ctime"      : $ctime,
+    "source_id"  : "$source_id",
+    "itc"        : 86
+}'
+
+    #print -- curl -X POST -H "Content-Type: application/json" --data "${(e)body}" $API_SMS
+    curl -X POST -H "Content-Type: application/json" --data "${(e)body}" "$API_SMS"
+} */
+
+const crypto  = require('crypto');
+const request = require('./request');
+
+function md5(str) {
+    var md5sum = crypto.createHash("md5");
+    md5sum.update(str);
+    return md5sum.digest("hex");
+}
+
+const API_SMS_INTER = "http://52.76.255.233:33226/sms/api/smsSend";
+
+/**
+ * 通过公司内部发送短信, 不能超过200个字符
+ * @param message 不能超过200个字符
+ * @param mobiles 电话号码列表
+ * @returns {Promise<string>} 成功时返回message的md5, 失败时候返回空字符串
+ */
+async function sendSmsInternal(message, mobiles=[]) {
+    if(message.length > 200) {
+        throw  `message it too long (max=200)`;
+    }
+
+    const now = (new Date).getTime();
+    const key = "34ac56b47d081ef6797adc8b3a033c64";
+
+    let data = {
+        server_type : 5,
+        mobiles     : mobiles.join(","),
+        sign        : md5(`${key}${message}${now}`),
+        ctime       : `${now}`,
+        content     : message,
+        source_id   : "cm_wallet",
+        itc         : 86
+    };
+    let {status} = await request.post(API_SMS_INTER, data);
+    return status === 200 ? md5(message) : "";
+}
+
+(async () => {
+    let r = await sendSmsInternal("\u{2753}hello", ["13810625765"]);
+    console.log(r);
+})();
+
+console.log('\u{2753}');

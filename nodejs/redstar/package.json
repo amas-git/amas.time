@@ -2,9 +2,11 @@
   "name": "src",
   "version": "0.0.1",
   "dependencies": {
+    "axios": "^0.18.0",
     "bluebird": "^3.5.1",
     "bluebirds": "0.0.6",
     "cheerio": "^1.0.0-rc.2",
+    "crypo": "^0.1.4",
     "eslint": "^5.4.0",
     "koa": "^2.5.2",
     "koa-bodyparser": "^4.2.1",

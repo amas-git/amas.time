@@ -1,6 +1,6 @@
 #---------------------------------------------------| @src
 appname: "demos",
-host:localhost,
+host:"localhost",
 port:8888,
 middleware:[
     "koa-bodyparser"
@@ -36,6 +36,6 @@ module.exports = async function(ctx, next) {
     const start = Date.now();
     await next();
     const ms = Date.now() - start;
-    ctx.set("X-Response-Time", `${ms}ms`);
+    ctx.set("X-Response-Time", `\${ms}ms`);
 };
 #---------------------------------------------------|
