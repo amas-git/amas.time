@@ -23,7 +23,7 @@ var maple_path = [];
  */
 
 
-const DEBUG = false;
+const DEBUG = true;
 
 function print(o, tag="") {
     if(o && DEBUG) {
@@ -98,6 +98,7 @@ class Section {
     eval(env) {
         let start = Date.now();
         let rs = env.handlers[this.name](env, this);
+        print(this.pipes, "   PIPE");
         let time = Date.now() - start;
         this.time = time;
         return rs;
@@ -401,3 +402,8 @@ function readline(file, cb) {
 
 //run_maple("maple/orm.mp");
 run_maple("maple/test_yaml.mp");
+
+
+function pipe() {
+
+}
