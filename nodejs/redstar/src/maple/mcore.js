@@ -168,6 +168,79 @@ function push(xs, x) {
     x && xs.push(x);
 }
 
+// The most ugly code, FUCK YOU
+function parseMEXPR(text) {
+    text = text.trim();
+    function IS_SPACE(c) {
+        return /\s+/.test(c);
+    }
+
+    function IS_QUOTE(c) {
+        return c === "'" || c === '"' || c === "`";
+    }
+
+    if(_.isEmpty(text)) {
+        return [["@part"]];
+    }
+
+    let ts = [];
+    let rs = [];
+
+    if(!text.startsWith('@')) {
+        rs.push("@part");
+    }
+
+
+    let qs = null;
+    let cword = "";
+
+    for (let c of text) {
+        if (IS_SPACE(c)) {
+            if (qs) {
+                cword += c;
+                continue;
+            }
+            if(cword) {
+                rs.push(cword);
+                cword = "";
+            }
+        } else if (IS_QUOTE(c)) {
+            if (!qs) {
+                qs = c;
+                continue;
+            }
+            if (qs === c) {
+                qs = null;
+                rs.push(cword);
+                cword = "";
+                continue;
+            }
+            cword += c;
+        } else if (c === '|') {
+            if (qs) {
+                cword += c;
+                continue;
+            }
+            ts.push(rs);
+            rs=[];
+        } else {
+            cword += c;
+        }
+    }
+
+    if (qs) {
+        throw `parse ERROR, '${qs}' is mismatch`;
+    }
+    if (cword) {
+        rs.push(cword);
+    }
+    if (rs.length > 0) {
+        ts.push(rs);
+    }
+
+    return ts;
+}
+
 module.exports = {
     exeval,
     template,
@@ -181,5 +254,6 @@ module.exports = {
     write,
     push,
     objectFromYamlFile,
-    objectFromYamlString
+    objectFromYamlString,
+    parseMEXPR
 };

@@ -41,7 +41,6 @@ function println(o, tag="") {
     }
 }
 
-
 class Section {
     constructor(id, name, level, params=[]) {
         this.id       = id;
@@ -105,6 +104,13 @@ class Section {
 
     static ROOT() {
         return new Section(0, "part", 2048);
+    }
+
+    static fromMEXPR(id, text, level) {
+        let ts = mcore.parseMEXPR(text);
+        let [[name, ...params],...cmds] = ts;
+        let section = new Section(id, name.replace(/^[@]/,''), level, params);
+        return section;
     }
 }
 
@@ -186,7 +192,6 @@ const BASE_HANDLER = {
         let name = section.params[0] || "main";
         let rs   = section.mapFlat(env);
         env.src[name] = M(`module.exports={${rs.join('\n')}}`);
-        print(env.src.main, name);
         env.changeContext(env.src.main);
         return [];
     },
@@ -308,9 +313,8 @@ class Maple {
         return os;
     }
 
-    addSection(name, params, level=0) {
-        name = name || "part";
-        this.currentSection = new Section(this.seq++, name, level, params);
+    addSection(mexpr, level=0) {
+        this.currentSection = Section.fromMEXPR(this.seq++,mexpr, level);
         this.sections.push(this.currentSection);
     }
 
@@ -365,18 +369,13 @@ function run_maple(file) {
 
         let match;
         if(line.startsWith('#----')) {
-            if (match = /^#([-]{4,256})[|]\s[@]([a-z_A-Z][a-z_A-Z0-9]*)(.*)$/.exec(line)) {
-                let [ , level, name, params] = match;
-                maple.addSection(name.trim(), params.trim().split(/\s+/), level.length);
-            } else if (match = /^#([-]{4,256})([|])(.*)$/.exec(line)) {
-                let [ , level,  , expr] = match;
-                if(expr.startsWith('|')) {
-                    maple.addContent(`#${level}|${expr.slice(1)}`);
-                } else {
-                    maple.addSection("", [expr.trim()], level.length);
-                }
-            } else {
-                /* NOTHING */
+
+            match = /^#([-]{4,2048})[|][\s]*(.*)/.exec(line);
+
+            if (match) {
+                let [,level, mexpr] = match;
+                maple.addSection(mexpr, level.length);
+                return;
             }
             return;
         }
@@ -397,4 +396,6 @@ function readline(file, cb) {
 
 //run_maple("maple/orm.mp");
 run_maple("maple/test_yaml.mp");
+
+
 
