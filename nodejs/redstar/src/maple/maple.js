@@ -6,6 +6,7 @@ var maple_path = [];
 
 /**
  * TODO:
+ *  最重要的: handler, maple func, userfunc大一统, 2019年前必须搞定
  *  1. 用array.some()改写正则匹配部分
  *  3. 性能统计: eval求值时间，次数，产生的字符数量等等
  *  4. 实现pipe
@@ -13,7 +14,6 @@ var maple_path = [];
  *  1. 2018.06.18: Finished Core Design
  *  2. use function all instead of eval&let, the function parmas limit will be a problems
  * @param text
- *  5. 实现IO section
  *  6. 用迭代代替mktree|printrs递归方式
  *  7. 提供一些打印上下文信息的调试函数，方便定位问题
  *  8. **可以把section编译成js函数
@@ -49,6 +49,7 @@ class Section {
         this.contents = [];
         this.params   = params;
         this.sections = [];
+        this.pipes    = []; // 级联函数序列
         this.time     = 0;
         this.sep      = "\n";
     }
@@ -110,6 +111,7 @@ class Section {
         let ts = mcore.parseMEXPR(text);
         let [[name, ...params],...cmds] = ts;
         let section = new Section(id, name.replace(/^[@]/,''), level, params);
+        section.pipes = ts;
         return section;
     }
 }
@@ -131,6 +133,9 @@ const BASE_HANDLER = {
         let rs = [];
 
         function getsub(o, expr) {
+            if(!/[a-zA-Z_.]+$/.test(expr)) {
+                return null;
+            }
             let chunk = expr.split(".");
             let r = o;
             chunk.forEach( c => r = r[c]);
@@ -207,7 +212,7 @@ const BASE_HANDLER = {
     yaml(env, section) {
         let name      = section.params[0] || "main";
         let rs        = section.mapFlat(env);
-        env.src[name] = mcore.objectFromYamlString(rs.join(""));
+        env.src[name] = mcore.objectFromYamlString(rs.join("\n"));
         env.changeContext(env.src.main);
         return [];
     },
@@ -396,6 +401,3 @@ function readline(file, cb) {
 
 //run_maple("maple/orm.mp");
 run_maple("maple/test_yaml.mp");
-
-
-
