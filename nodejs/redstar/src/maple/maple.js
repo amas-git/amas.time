@@ -23,7 +23,7 @@ var maple_path = [];
  */
 
 
-const DEBUG = true;
+const DEBUG = false;
 
 function print(o, tag="") {
     if(o && DEBUG) {
@@ -42,20 +42,17 @@ function println(o, tag="") {
 }
 
 class Section {
-    constructor(id, name, level, params=[]) {
+    constructor(id, level, pipes=[["@part"]]) {
         this.id       = id;
-        this.name     = name;
         this.level    = level;
         this.contents = [];
-        this.params   = params;
         this.sections = [];
-        this.pipes    = []; // 级联函数序列
+        this.pipes    = pipes; // 级联函数序列
         this.time     = 0;
         this.sep      = "\n";
     }
 
-    test(env) {
-        let $expr = this.params.join("").trim();
+    test(env, $expr) {
         if(_.isEmpty($expr)) {
             return true;
         }
@@ -83,6 +80,12 @@ class Section {
         return Maple.printrs(rs);
     }
 
+    /**
+     * @param env
+     * @param rs 保存求值结果
+     * @param template 是否在env下求值template
+     * @returns {Array}
+     */
     map(env, rs=[], template=true) {
         mcore.push(rs, mcore.template(env, this.join("\n"), template));
         this.sections.forEach((s) => {
@@ -97,40 +100,51 @@ class Section {
 
     eval(env) {
         let start = Date.now();
-        let rs = env.handlers[this.name](env, this);
-        print(this.pipes, "   PIPE");
+        let rs = this.runpipe(env);
         let time = Date.now() - start;
         this.time = time;
         return rs;
     }
 
+    runpipe(env) {
+        let rs = [];
+        this.pipes.forEach(cmd => {
+            let [cn, ...params] = cmd;
+            if (cn.startsWith('@')) {
+                let h = env.handlers[cn.slice(1)];
+                if (h) {
+                    rs = h(env, this, params);
+                }
+            }
+        });
+        return rs;
+    }
+
     static ROOT() {
-        return new Section(0, "part", 2048);
+        return new Section(0, 2048);
     }
 
     static fromMEXPR(id, text, level) {
-        let ts = mcore.parseMEXPR(text);
-        let [[name, ...params],...cmds] = ts;
-        let section = new Section(id, name.replace(/^[@]/,''), level, params);
-        section.pipes = ts;
+        let pipes = mcore.parseMEXPR(text);
+        let section = new Section(id, level, pipes);
         return section;
     }
 }
 
 
 const BASE_HANDLER = {
-    func(env, section) {
-        let [fname,  ...params] = section.params;
-        let fn = (...args) => { return section.apply(env, params, args); };
+    func(env, section, params) {
+        let [fname,  ...fparams] = params;
+        let fn = (...args) => { return section.apply(env, fparams, args); };
         env.addFunction(fname, fn, "");
         return [];
     },
 
-    part(env, section) {
-        return (section.test(env)) ? section.map(env) : [];
+    part(env, section, params) {
+        return (section.test(env, params.join(" "))) ? section.map(env) : [];
     },
 
-    foreach(env, section) {
+    foreach(env, section, params) {
         let rs = [];
 
         function getsub(o, expr) {
@@ -148,11 +162,11 @@ const BASE_HANDLER = {
             // @foreach xs -> @foreach $:xs
             // @foreach x:_range(1,100)
 
-            if (_.isEmpty(section.params)) {
+            if (_.isEmpty(params)) {
                 return undefined;
             }
 
-            let forExpr = mcore.template(env, section.params.join("").trim());
+            let forExpr = mcore.template(env, params.join("").trim());
             let match   = /([_]*[a-zA-Z0-9_]+):(.*)/.exec(forExpr.trim());
             let xname   = "$";
             let expr    = forExpr;
@@ -194,33 +208,33 @@ const BASE_HANDLER = {
         return mcore.flat(rs);
     },
 
-    src(env, section) {
-        let name = section.params[0] || "main";
+    src(env, section, params) {
+        let name = params[0] || "main";
         let rs   = section.mapFlat(env);
         env.src[name] = M(`module.exports={${rs.join('\n')}}`);
         env.changeContext(env.src.main);
         return [];
     },
 
-    json(env, section) {
-        let name      = section.params[0] || "main";
+    json(env, section, params) {
+        let name      = params[0] || "main";
         let rs        = section.mapFlat(env);
         env.src[name] = JSON.parse(rs.join(""));
         env.changeContext(env.src.main);
         return [];
     },
 
-    yaml(env, section) {
-        let name      = section.params[0] || "main";
+    yaml(env, section, params) {
+        let name      = params[0] || "main";
         let rs        = section.mapFlat(env);
         env.src[name] = mcore.objectFromYamlString(rs.join("\n"));
         env.changeContext(env.src.main);
         return [];
     },
 
-    srcfile(env, section) {
+    srcfile(env, section, params) {
         let rs = section.mapFlat(env);
-        let name = section.params[0] || "main";
+        let name = params[0] || "main";
         let c = [];
 
         rs.forEach( f => {
@@ -234,9 +248,9 @@ const BASE_HANDLER = {
         return [];
     },
 
-    mod(env, section) {
+    mod(env, section, params) {
         let content = mcore.flat(section.map(env, [], false));
-        let name = section.params[0];
+        let name = params[0];
         let mod = M(`${content.join('\n')}`);
         if (name) {
             env.mod[name] = mod;
@@ -252,9 +266,13 @@ const BASE_HANDLER = {
         return [r];
     },
 
-    save(env, section) {
+    upper(env, section, params) {
+        return ["UPPER"];
+    },
+
+    save(env, section, params) {
         let rs = section.mapFlat(env);
-        let name = mcore.template(env, section.params[0].trim());
+        let name = mcore.template(env, params[0].trim());
         mcore.write(name, Maple.printrs(rs));
         return [];
     }
