@@ -420,8 +420,3 @@ function readline(file, cb) {
 
 //run_maple("maple/orm.mp");
 run_maple("maple/test_yaml.mp");
-
-
-function pipe() {
-
-}
