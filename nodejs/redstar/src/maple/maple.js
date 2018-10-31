@@ -172,7 +172,7 @@ const BASE_HANDLER = {
             let expr    = forExpr;
 
             if(match) {
-                [,xname, expr] = match;
+                [ ,xname, expr] = match;
                 expr  = expr  || forExpr;
             }
             // FIXME: 当对象为a.b这种形式的时候会无法获取
@@ -287,7 +287,7 @@ class Maple {
         this.var       = {};    // 缓存状态
         this.root      = {};
         this.handlers  = BASE_HANDLER;
-        this.sections  = [];
+        this.sections  = [ Section.ROOT() ];
         this.functions = {};
         this.__context = {stack:[{}]};
         this.mpath     = [...maple_path];
@@ -302,9 +302,6 @@ class Maple {
         if(scriptd) {
             this.mpath.unshift(scriptd);
         }
-
-        this.currentSection = Section.ROOT();
-        this.sections.push(this.currentSection);
     }
 
     get context() {
@@ -338,8 +335,12 @@ class Maple {
     }
 
     addSection(mexpr, level=0) {
-        this.currentSection = Section.fromMEXPR(this.seq++,mexpr, level);
-        this.sections.push(this.currentSection);
+        let section = Section.fromMEXPR(this.seq++,mexpr, level);
+        this.sections.push(section);
+    }
+
+    _current() {
+        return _.last(this.sections);
     }
 
     addFunction(fname, f, module) {
@@ -354,7 +355,7 @@ class Maple {
     }
 
     addContent(content) {
-        this.currentSection.contents.push(content);
+        this._current().contents.push(content);
     }
 
     tree() {
@@ -374,6 +375,7 @@ class Maple {
             console.log(`${s.id} : ${s.time}` );
         });
     }
+
     static printrs(xs) {
         return mcore.flat(xs).join("\n");
     }
@@ -393,15 +395,12 @@ function run_maple(file) {
 
         let match;
         if(line.startsWith('#----')) {
-
             match = /^#([-]{4,2048})[|][\s]*(.*)/.exec(line);
-
             if (match) {
                 let [,level, mexpr] = match;
                 maple.addSection(mexpr, level.length);
                 return;
             }
-            return;
         }
         maple.addContent(line);
     });
