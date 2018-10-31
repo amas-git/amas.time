@@ -94,8 +94,8 @@ class Section {
         return rs;
     }
 
-    mapFlat(env, rs=[]) {
-        return mcore.flat(this.map(env,rs));
+    mapFlat(env, rs=[], template=true) {
+        return mcore.flat(this.map(env,rs,template));
     }
 
     eval(env) {
@@ -114,6 +114,8 @@ class Section {
                 let h = env.handlers[cn.slice(1)];
                 if (h) {
                     rs = h(env, this, params);
+                } else {
+                    rs = env.handlers['exec'](env, this, params, cn.slice(1));
                 }
             }
         });
@@ -130,7 +132,6 @@ class Section {
         return section;
     }
 }
-
 
 const BASE_HANDLER = {
     func(env, section, params) {
@@ -260,14 +261,14 @@ const BASE_HANDLER = {
         return [];
     },
 
-    zsh(env, section) {
-        let rs = section.mapFlat(env);
-        let r = mcore.exec(rs.join("\n"), "zsh");
-        return [r];
-    },
-
     upper(env, section, params) {
         return ["UPPER"];
+    },
+
+    exec(env, section, params, cmd) {
+        let rs = section.mapFlat(env, [], false);
+        let r = mcore.exec(cmd, params, rs.join('\n'));
+        return [r];
     },
 
     save(env, section, params) {

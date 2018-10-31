@@ -1,4 +1,4 @@
-const execSync = require('child_process').execSync;
+const cp = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const _ = require('lodash');
@@ -55,8 +55,9 @@ function walk(o, f, path="") {
     }
 }
 
-function exec(cmd, shell="/bin/sh") {
-    let r = execSync(cmd, { shell:shell, encoding:"utf8"});
+function exec(cmd, args, input, encoding="utf8") {
+    let {status, stdout, stderr} = cp.spawnSync(cmd, args, {input: input, encoding: encoding});
+    let r = status === 0 ? stdout : stderr;
     return r;
 }
 
