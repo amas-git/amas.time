@@ -6,7 +6,8 @@ var maple_path = [];
 
 /**
  * TODO:
- *  最重要的: handler, maple func, userfunc大一统, 2019年前必须搞定
+ *  用maple script扩展maple script的能力
+ *  最重要的: handler, maple func, userfunc大一统, 2019年前必须搞定(看看能不能调用模板)
  *  1. 用array.some()改写正则匹配部分
  *  3. 性能统计: eval求值时间，次数，产生的字符数量等等
  *  4. 实现pipe
@@ -106,17 +107,45 @@ class Section {
         return rs;
     }
 
+    /**
+     * TODO:
+     *  1.
+     */
     runpipe(env) {
         let rs = [];
+        let input = {
+            fns: {},
+            put(id, srcFn) {
+                this.fns[id]=srcFn;
+            },
+
+            get(ids="pT") {
+                for (let id of ids) {
+                    let fn = this.fns[id];
+                    if(fn) {
+                        return fn();
+                    }
+                }
+            }
+        };
+
+        // 模板化之后的文字
+        input.put('T', () => this.mapFlat(env));
+
+        // 原文字
+        input.put('t', () => this.mapFlat(env, [], false));
+
         this.pipes.forEach(cmd => {
             let [cn, ...params] = cmd;
             if (cn.startsWith('@')) {
                 let h = env.handlers[cn.slice(1)];
                 if (h) {
-                    rs = h(env, this, params);
+                    rs = h(env, this, params, input);
                 } else {
                     rs = env.handlers['exec'](env, this, params, cn.slice(1));
                 }
+                // 管道
+                input.put("p", () => rs );
             }
         });
         return rs;
@@ -133,6 +162,8 @@ class Section {
     }
 }
 
+
+
 const BASE_HANDLER = {
     func(env, section, params) {
         let [fname,  ...fparams] = params;
@@ -141,11 +172,11 @@ const BASE_HANDLER = {
         return [];
     },
 
-    part(env, section, params) {
-        return (section.test(env, params.join(" "))) ? section.map(env) : [];
+    part(env, section, params, input) {
+        return (section.test(env, params.join(" "))) ? input.get() : [];
     },
 
-    foreach(env, section, params) {
+    foreach(env, section, params, input) {
         let rs = [];
 
         function getsub(o, expr) {
@@ -202,39 +233,37 @@ const BASE_HANDLER = {
             $o["$last"]  = n === LENGTH;
 
             env.changeContext($o);
-            section.map(env, rs);
+            //section.map(env, rs);
+            rs.push(input.get());
             env.restoreContext();
         });
         env.restoreContext();
         return mcore.flat(rs);
     },
 
-    src(env, section, params) {
+    src(env, section, params, input) {
         let name = params[0] || "main";
-        let rs   = section.mapFlat(env);
-        env.src[name] = M(`module.exports={${rs.join('\n')}}`);
+        env.src[name] = M(`module.exports={${input.get().join("")}}`);
         env.changeContext(env.src.main);
         return [];
     },
 
-    json(env, section, params) {
+    json(env, section, params, input) {
         let name      = params[0] || "main";
-        let rs        = section.mapFlat(env);
-        env.src[name] = JSON.parse(rs.join(""));
+        env.src[name] = JSON.parse(input.get().join(""));
         env.changeContext(env.src.main);
         return [];
     },
 
-    yaml(env, section, params) {
+    yaml(env, section, params, input) {
         let name      = params[0] || "main";
-        let rs        = section.mapFlat(env);
-        env.src[name] = mcore.objectFromYamlString(rs.join("\n"));
+        env.src[name] = mcore.objectFromYamlString(input.get().join("\n"));
         env.changeContext(env.src.main);
         return [];
     },
 
-    srcfile(env, section, params) {
-        let rs = section.mapFlat(env);
+    srcfile(env, section, params, input) {
+        let rs = input.get();
         let name = params[0] || "main";
         let c = [];
 
@@ -249,8 +278,8 @@ const BASE_HANDLER = {
         return [];
     },
 
-    mod(env, section, params) {
-        let content = mcore.flat(section.map(env, [], false));
+    mod(env, section, params, input) {
+        let content = input.get("pt");
         let name = params[0];
         let mod = M(`${content.join('\n')}`);
         if (name) {
@@ -261,8 +290,8 @@ const BASE_HANDLER = {
         return [];
     },
 
-    upper(env, section, params) {
-        return ["UPPER"];
+    upper(env, section, params, input) {
+        return [input.get().join("\n").toUpperCase()];
     },
 
     exec(env, section, params, cmd) {
@@ -271,8 +300,12 @@ const BASE_HANDLER = {
         return [r];
     },
 
-    save(env, section, params) {
-        let rs = section.mapFlat(env);
+    echo(env, section, params, input) {
+        return [ input.get('pt') ];
+    },
+
+    save(env, section, params, input) {
+        let rs = input.get();
         let name = mcore.template(env, params[0].trim());
         mcore.write(name, Maple.printrs(rs));
         return [];
