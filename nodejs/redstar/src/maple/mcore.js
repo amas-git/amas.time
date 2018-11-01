@@ -256,5 +256,6 @@ module.exports = {
     push,
     objectFromYamlFile,
     objectFromYamlString,
+    mcall,
     parseMEXPR
 };

@@ -6,8 +6,10 @@ var maple_path = [];
 
 /**
  * TODO:
- *  用maple script扩展maple script的能力
- *  最重要的: handler, maple func, userfunc大一统, 2019年前必须搞定(看看能不能调用模板)
+ *  用maple script扩展maple script的能力, maple命令stdin接受一个输入可以是yml/xml/..., 然后作为main obj
+ *  参数的处理
+ *
+ *
  *  1. 用array.some()改写正则匹配部分
  *  3. 性能统计: eval求值时间，次数，产生的字符数量等等
  *  4. 实现pipe
@@ -138,11 +140,19 @@ class Section {
         this.pipes.forEach(cmd => {
             let [cn, ...params] = cmd;
             if (cn.startsWith('@')) {
-                let h = env.handlers[cn.slice(1)];
+                cn = cn.slice(1);
+                let h = env.handlers[cn];
                 if (h) {
                     rs = h(env, this, params, input);
                 } else {
-                    rs = env.handlers['exec'](env, this, params, cn.slice(1));
+                    let func = env.functions[cn];
+                    if(func) {
+                        // 模板函数
+                        rs = func(...params);
+                    } else {
+                        params.unshift(cn);
+                        rs = env.handlers['exec'](env, this, params, input);
+                    }
                 }
                 // 管道
                 input.put("p", () => rs );
@@ -248,6 +258,13 @@ const BASE_HANDLER = {
         return [];
     },
 
+    var(env, section, params, input) {
+        let name  = params[0];
+        let value = input.get();
+        env.var[name] = value;
+        return value;
+    },
+
     json(env, section, params, input) {
         let name      = params[0] || "main";
         env.src[name] = JSON.parse(input.get().join(""));
@@ -294,9 +311,10 @@ const BASE_HANDLER = {
         return [input.get().join("\n").toUpperCase()];
     },
 
-    exec(env, section, params, cmd) {
-        let rs = section.mapFlat(env, [], false);
-        let r = mcore.exec(cmd, params, rs.join('\n'));
+    exec(env, section, params, input) {
+        let [cmd, ...args] = params;
+        let rs = input.get();
+        let r = mcore.exec(cmd, args, rs.join('\n'));
         return [r];
     },
 
@@ -453,3 +471,4 @@ function readline(file, cb) {
 
 //run_maple("maple/orm.mp");
 run_maple("maple/test_yaml.mp");
+//console.log(mcore.mcall({a:1, b:2}, 'return a+b'));
