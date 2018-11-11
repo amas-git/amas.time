@@ -4,7 +4,7 @@ dbpath: "test.db",
 scheme: {
     peoples: [
         {name:"name", type:"string:256", primaryKey:true},
-        {name:"ids",   type:"int", primaryKey: true},
+        {name:"ids",  type:"int", primaryKey: true},
         {name:"age",  type:"int", unique: true},
     ]
 }
@@ -48,23 +48,23 @@ const sequelize = new Sequelize('${dbname}', null, null, {
   storage: '${dbpath}',
   operatorsAliases: false
 });
-#-------------------------------------------------------------| @foreach schemev
-const ${$foreach.key} = sequelize.define('${$foreach.key}', {
-#------------------------------------------| @foreach $
-    ${name} : {
-        type: ${$mod.SEQ.TYPE(type)}
-#--------------------------| primaryKey
-        ，primaryKey: ${primaryKey}
-#--------------------------| defaultValue
+#-------------------------------------------------------------| @foreach s:scheme
+const ${$key} = sequelize.define('${$key}', {
+#------------------------------------------| @foreach s
+    ${$.name} : {
+        type: ${$mod.SEQ.TYPE($.type)}
+#--------------------------| $.primaryKey
+        ，primaryKey: ${$.primaryKey}
+#--------------------------| $.defaultValue
         ，defaultValue: false
-#--------------------------| autoIncrement
+#--------------------------| $.autoIncrement
         ，autoIncrement: true
-#--------------------------| unique
+#--------------------------| $.unique
         ，unique: 'compositeIndex'
-#--------------------------| allowNull
-        ，allowNull: ${allowNull}
+#--------------------------| $.allowNull
+        ，allowNull: ${$.allowNull}
 #--------------------------|
-    }${$foreach.last?"":","}
+    }${$last?"":","}
 #------------------------------------------|
 }, {
     timestamps:  false,      // 禁止自动创建createAt和updateAt属性
@@ -76,34 +76,34 @@ const ${$foreach.key} = sequelize.define('${$foreach.key}', {
 //    deletedAt: 'destroyTime',
 });
 
-async function save_${$foreach.key}(data) {
-    ${$foreach.key}.bulkCreate(data, { validate: true })
+async function save_${$key}(data) {
+    ${$key}.bulkCreate(data, { validate: true })
         .catch(e => { console.error(e.stack)});
 }
 
-async function get_${$foreach.key}() {
-    let rs = await ${$foreach.key}.findAll({where: {symbol: s}});
+async function get_${$key}() {
+    let rs = await ${$key}.findAll({where: {symbol: s}});
     return rs;
 }
 
 // 类级别的方法
-${$foreach.key}.classLevelMethod = function() {
+${$key}.classLevelMethod = function() {
   return 'hello';
 };
 
 // 实例级别的方法
-${$foreach.key}.instanceLevelMethod = function() {
+${$key}.instanceLevelMethod = function() {
   return 'hello';
 };
 
 // 将模型定义保存到单独的文件中
-const ${$foreach.key}  = sequelize.import(__dirname + "/path/to/models/project")
-#-------------------------------------------------------------|
+const ${$key}  = sequelize.import(__dirname + "/path/to/models/project")
+#------------------------------------------|
 (async () => {
     sequelize.sync(); // This will create table
 })();
 
 
 module.exports = (sequelize, DataTypes) => {
-    return ${$foreach.key};
+    return ${$key};
 }

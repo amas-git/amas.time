@@ -1,5 +1,6 @@
 const net = require("./net");
 const Sequelize = require("sequelize");
+const assert = require("assert");
 
 const db_path = "./maple/coinmarketcap.db";
 const sequelize = new Sequelize('database', null, null, {
@@ -56,13 +57,38 @@ const Coins = sequelize.define('coins', {
     //sequelize.sync(); // This will create table
     //await saveCoins();
     let c = await getCoins("BTC");
-    console.log(JSON.stringify(c));
+    //console.log(JSON.stringify(c));
     // let btc = Coins.build({id: 1, name: "btc", symbol:"btc", website_slug:"btc"});
     // console.log(JSON.stringify(btc,null,4));
     // btc.save();
 })();
 
 
+let cache = undefined;
+function fn(cb) {
+    console.log(`cache=${cache}`)
+    if(cache) {
+        console.log("sync callback");
+        cb();
+    } else {
+        process.nextTick(() => {
+            cache = true;
+            console.log("async callback");
+            cb();
+        });
+    }
+}
+
+fn(()=>{});
+
+
+let x = 1;
+
+fn(() => {
+    assert(x === 2);
+});
+
+x = 2;
 
 
 const Tick = sequelize.define('tick', {

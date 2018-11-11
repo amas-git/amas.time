@@ -1,4 +1,3 @@
-//const minimatch = require("minimatch")
 const M = require('./M');
 const _ = require('lodash');
 const path = require('path');
@@ -7,6 +6,10 @@ var maple_path = [];
 
 /**
  * TODO:
+ *  用maple script扩展maple script的能力, maple命令stdin接受一个输入可以是yml/xml/..., 然后作为main obj
+ *  参数的处理
+ *
+ *
  *  1. 用array.some()改写正则匹配部分
  *  3. 性能统计: eval求值时间，次数，产生的字符数量等等
  *  4. 实现pipe
@@ -14,194 +17,56 @@ var maple_path = [];
  *  1. 2018.06.18: Finished Core Design
  *  2. use function all instead of eval&let, the function parmas limit will be a problems
  * @param text
- *  5. 实现IO section
  *  6. 用迭代代替mktree|printrs递归方式
  *  7. 提供一些打印上下文信息的调试函数，方便定位问题
  *  8. **可以把section编译成js函数
  *  FIXME:
  *
+ *  结果正确 != 过程正确
  */
 
 
+const DEBUG = false;
 
 function print(o, tag="") {
-    if(o) {
-        console.error(tag+JSON.stringify(o, null, 2));
+    if(o && DEBUG) {
+        let c = JSON.stringify(o, null, 2).split("\n");
+        c = c.map((s) =>{ return `[${tag}] : ${s}`; } );
+        console.error(c.join("\n"));
     }
 }
 
-function error(e) {
-    console.log(e);
-}
-
-function joinObjects(os) {
-    let r = os.reduce((r,e) => { return _.assign(r, e); }, {});
-    return r;
-}
-
-function convertId(keys=[]) {
-    return keys.map((key)=>{
-        if(key.match(/\d+/)) {
-            return `$${key}`;
-        }
-        // TODO: support more convertion
-        // TODO: when the array keys is large, only keep 9 id
-        return key;
-    });
-}
-
-function mcall(os, code) {
-    return new Function(convertId(Object.keys(os)), code).apply(null, Object.values(os));
-}
-
-function exeval($os, $code) {
-    return mcall(joinObjects($os), `${$code}`);
-}
-
-function template(env, template) {
-    let $T       = template.replace(/`/g, '\\`');
-    return exeval(env.expose(), `return \`${$T}\`;`);
-}
-
-function mktree(xs, root=xs[0], level="level", child='nodes') {
-    function parentOf(xs, x, anchor) {
-        for(let i=anchor-1; i>=0; i--) {
-            if(xs[i][level] > x[level]) { // TODO: override with isParent function & export it
-                return xs[i];
-            }
-        }
-        return null;
+function println(o, tag="") {
+    if(o && DEBUG) {
+        let c = JSON.stringify(o).split("\n");
+        c = c.map((s) =>{ return `[${tag}] : ${s}`; } );
+        console.error(c.join("\n"));
     }
-
-    for(let i=1; i<xs.length; ++i) {
-        let p = parentOf(xs, xs[i], i);
-        p[child].push(xs[i]);
-    }
-
-    //console.error(root);
-    return root;
 }
-
-const SectionType = Object.freeze({
-    FUNC: '@func',
-    NORM: '@norm',
-    PART: '@part',
-    LOOP: '@loop'
-});
 
 class Section {
-    /**
-     *
-     * @param name section name
-     * @param type section type
-     * @param level section level
-     */
-    constructor(name, type, level) {
-        this.id       = 0;
-        this.name     = name;
-        this.type     = type;
+    constructor(id, level, pipes=[["@part"]]) {
+        this.id       = id;
         this.level    = level;
-        this.sections = [];
         this.contents = [];
-        this.params   = [];
+        this.sections = [];
+        this.pipes    = pipes; // 级联函数序列
+        this.time     = 0;
         this.sep      = "\n";
     }
 
-    isFunc() { return this.type === SectionType.FUNC; }
-    isNorm() { return this.type === SectionType.NORM; }
-    isPart() { return this.type === SectionType.PART; }
-    isLoop() { return this.type === SectionType.LOOP; }
-
-    test(env) {
-        let $expr = this.params.join("").trim();
+    test(env, $expr) {
         if(_.isEmpty($expr)) {
             return true;
         }
 
-        let r = false;
-        try {
-            r = exeval(env.expose(), `return ${$expr};`);
-        } catch (e) {
-            error(e);
-            r = false;
-        }
+        let r = mcore.exeval(env.expose(), `return ${$expr};`);
         // console.log(`${$expr} -> ${r}`);
         return (r) ? true : false;
     }
 
     join(c='\n') {
         return this.contents.join(c);
-    }
-
-    static issue(section, rs, xs) {
-        if(_.isEmpty(xs)){
-            return;
-        }
-        rs.rs.push(xs);
-        return rs;
-    }
-
-    'eval@loop'(env) {
-        // @foreach x:xs
-        // @foreach xs -> @foreach $:xs
-        let rs = [];
-        if(_.isEmpty(this.params)) {
-            return rs;
-        }
-
-        let [xname, xs_name=xname] = this.params[0].split(':');
-        if(xname === xs_name) {
-            xname = '$';
-        }
-
-        let os = env.context[xs_name];
-
-        let LENGTH = Object.keys(os).length;
-        let n   = 0;
-
-        _.forEach(os, (value, key) => {
-            let $o = {};
-            n += 1;
-
-            $o[xname]    = value;
-            $o["$key"]   = key;
-            $o["$first"] = n === 1;
-            $o["$last"]  = n === LENGTH;
-
-            env.changeContext($o);
-            rs.push(this._eval(env));
-            env.restoreContext();
-        });
-        return rs;
-    }
-
-    'eval@part'(env) {
-        if(this.test(env)) {
-            return this._eval(env);
-        }
-        return [];
-    }
-
-    'eval@norm'(env) {
-        let r = env.handlers[this.name](env, this.contents, this.params) || [];
-        return r;
-    }
-
-    'eval@func'(env) { return []; }
-
-    _eval(env) {
-        let rs = [];
-        rs.push(template(env, this.join(this.sep)));
-        for (let s of this.sections) {
-            rs.push(s.eval(env));
-        }
-        return rs;
-    }
-
-    eval(env={}) {
-        //console.log(`EVAL : ${this.id}${this.type}`);
-        let rs =  this[`eval${this.type}`](env);
-        return rs;
     }
 
     /**
@@ -212,54 +77,214 @@ class Section {
      * @returns {Array}
      */
     apply(env, params, args) {
-        function argv(params, args) {
-            let argv = params.reduce((r,e,i,_) => {
-                // FIXME: when args.length less then params;
-                r[e] = args[i];
-                return r;
-            },{});
-            return argv;
-        }
-
-        //console.log(`apply: ${params} with ${args}`);
-        //let rs = {id:this.id, rs:[], sep: this.sep};
-        env.changeContext(argv(params, args));
-        let rs = this._eval(env);
+        env.changeContext(_.zipObject(params, args));
+        let rs = this.map(env);
         env.restoreContext();
-
         return Maple.printrs(rs);
     }
 
-    toFunction() {
-
+    /**
+     * @param env
+     * @param rs 保存求值结果
+     * @param template 是否在env下求值template
+     * @returns {Array}
+     */
+    map(env, rs=[], template=true) {
+        mcore.push(rs, mcore.template(env, this.join("\n"), template));
+        this.sections.forEach((s) => {
+            rs.push(s.eval(env));
+        });
+        return rs;
     }
 
-    static createRootNode() {
-        return new Section("root",SectionType.PART,2048);
+    mapFlat(env, rs=[], template=true) {
+        return mcore.flat(this.map(env,rs,template));
     }
 
+    eval(env) {
+        let start = Date.now();
+        let rs = this.runpipe(env);
+        let time = Date.now() - start;
+        this.time = time;
+        return rs;
+    }
+
+    /**
+     * TODO:
+     *  1.
+     */
+    runpipe(env) {
+        let rs = [];
+        let input = {
+            fns: {},
+            put(id, srcFn) {
+                this.fns[id]=srcFn;
+            },
+
+            get(ids="pT") {
+                for (let id of ids) {
+                    let fn = this.fns[id];
+                    if(fn) {
+                        return fn();
+                    }
+                }
+            }
+        };
+
+        // 模板化之后的文字
+        input.put('T', () => this.mapFlat(env));
+
+        // 原文字
+        input.put('t', () => this.mapFlat(env, [], false));
+
+        this.pipes.forEach(cmd => {
+            let [cn, ...params] = cmd;
+            if (cn.startsWith('@')) {
+                cn = cn.slice(1);
+                let h = env.handlers[cn];
+                if (h) {
+                    rs = h(env, this, params, input);
+                } else {
+                    let func = env.functions[cn];
+                    if(func) {
+                        // 模板函数
+                        rs = func(...params);
+                    } else {
+                        params.unshift(cn);
+                        rs = env.handlers['exec'](env, this, params, input);
+                    }
+                }
+                // 管道
+                input.put("p", () => rs );
+            }
+        });
+        return rs;
+    }
+
+    static ROOT() {
+        return new Section(0, 2048);
+    }
+
+    static fromMEXPR(id, text, level) {
+        let pipes = mcore.parseMEXPR(text);
+        let section = new Section(id, level, pipes);
+        return section;
+    }
 }
 
+
+
 const BASE_HANDLER = {
-    e(env, content, params) {
-        return template(env, content.join('\n'));
+    func(env, section, params) {
+        let [fname,  ...fparams] = params;
+        let fn = (...args) => { return section.apply(env, fparams, args); };
+        env.addFunction(fname, fn, "");
+        return [];
     },
 
-    echo(env, content, params) {
-        return content.join('\n');
+    part(env, section, params, input) {
+        return (section.test(env, params.join(" "))) ? input.get() : [];
     },
 
-    src(env, content, params) {
+    foreach(env, section, params, input) {
+        let rs = [];
+
+        function getsub(o, expr) {
+            if(!/[a-zA-Z_.]+$/.test(expr)) {
+                return null;
+            }
+            let chunk = expr.split(".");
+            let r = o;
+            chunk.forEach( c => r = r[c]);
+            return r;
+        }
+
+        function getIterable() {
+            // @foreach x:xs
+            // @foreach xs -> @foreach $:xs
+            // @foreach x:_range(1,100)
+
+            if (_.isEmpty(params)) {
+                return undefined;
+            }
+
+            let forExpr = mcore.template(env, params.join("").trim());
+            let match   = /([_]*[a-zA-Z0-9_]+):(.*)/.exec(forExpr.trim());
+            let xname   = "$";
+            let expr    = forExpr;
+
+            if(match) {
+                [ ,xname, expr] = match;
+                expr  = expr  || forExpr;
+            }
+            // FIXME: 当对象为a.b这种形式的时候会无法获取
+            let os = getsub(env.context, expr);
+            if(!os) {
+                os = eval(expr);
+            }
+            return {xname: xname, os: os};
+        }
+
+        let {xname, os} = getIterable();
+        if(!os) {
+            return rs;
+        }
+
+        env.changeContext(os);
+        let LENGTH = Object.keys(os).length;
+        let n = 0;
+
+        _.forEach(os, (value, key) => {
+            let $o = {};
+            n += 1;
+            $o[xname]    = value;
+            $o["$key"]   = key;
+            $o["$first"] = n === 1;
+            $o["$last"]  = n === LENGTH;
+
+            env.changeContext($o);
+            //section.map(env, rs);
+            rs.push(input.get());
+            env.restoreContext();
+        });
+        env.restoreContext();
+        return mcore.flat(rs);
+    },
+
+    src(env, section, params, input) {
         let name = params[0] || "main";
-        env.src[name] = M(`module.exports={${content.join('\n')}}`);
+        env.src[name] = M(`module.exports={${input.get().join("")}}`);
         env.changeContext(env.src.main);
+        return [];
     },
 
-    srcfile(env, content, params) {
+    var(env, section, params, input) {
+        let name  = params[0];
+        let value = input.get();
+        env.var[name] = value;
+        return value;
+    },
+
+    json(env, section, params, input) {
+        let name      = params[0] || "main";
+        env.src[name] = JSON.parse(input.get().join(""));
+        env.changeContext(env.src.main);
+        return [];
+    },
+
+    yaml(env, section, params, input) {
+        let name      = params[0] || "main";
+        env.src[name] = mcore.objectFromYamlString(input.get().join("\n"));
+        env.changeContext(env.src.main);
+        return [];
+    },
+
+    srcfile(env, section, params, input) {
+        let rs = input.get();
         let name = params[0] || "main";
         let c = [];
 
-        content.forEach( f => {
+        rs.forEach( f => {
             let text = mcore.object(env.mpath, f);
             if(text) {
                 c.push(text);
@@ -267,9 +292,11 @@ const BASE_HANDLER = {
         });
         env.src[name] = M(`module.exports={${c.join(",")}}`);
         env.changeContext(env.src.main);
+        return [];
     },
 
-    mod(env, content, params) {
+    mod(env, section, params, input) {
+        let content = input.get("pt");
         let name = params[0];
         let mod = M(`${content.join('\n')}`);
         if (name) {
@@ -277,39 +304,50 @@ const BASE_HANDLER = {
         } else {
             _.assign(env.functions, mod);
         }
+        return [];
     },
 
-    zsh(env, content, params) {
-        let r = mcore.exec(content.join("\n"), "zsh");
+    upper(env, section, params, input) {
+        return [input.get().join("\n").toUpperCase()];
     },
 
-    debug(env, content, params) {
-        console.log(JSON.stringify(env.sections, null, 2));
+    exec(env, section, params, input) {
+        let [cmd, ...args] = params;
+        let rs = input.get();
+        let r = mcore.exec(cmd, args, rs.join('\n'));
+        return [r];
+    },
+
+    echo(env, section, params, input) {
+        return [ input.get('pt') ];
+    },
+
+    save(env, section, params, input) {
+        let rs = input.get();
+        let name = mcore.template(env, params[0].trim());
+        mcore.write(name, Maple.printrs(rs));
+        return [];
     }
 };
 
-
-
 class Maple {
     constructor(file) {
-        this.seq       = 0;
+        this.seq       = 1;
         this.file      = file;
         this.src       = {};    // data source
         this.mod       = {};    // modules
         this.var       = {};    // 缓存状态
         this.root      = {};
         this.handlers  = BASE_HANDLER;
-        this.sections  = [];
+        this.sections  = [ Section.ROOT() ];
         this.functions = {};
-        this.__context = {stack:[]};
-        this.currentSection = Section.createRootNode();
-        this.sections.push(this.currentSection);
+        this.__context = {stack:[{}]};
         this.mpath     = [...maple_path];
         this.export    = {
             $src       : this.src,
             $mod       : this.mod,
             $var       : this.var,
-            $func      : this.functions,
+            $func      : this.functions
         };
 
         let scriptd = path.dirname(file);
@@ -322,8 +360,12 @@ class Maple {
         return _.last(this.__context.stack);
     }
 
-    changeContext(ctx) {
-        this.__context.stack.push(ctx);  //console.log(`[CHANGE CTX +] : CTX = ${JSON.stringify(this.context)} TYPE:${(typeof this.context)}`);
+    changeContextToChild(key) {
+        this.changeContext(_.pick(this.context, key));
+    }
+
+    changeContext(ctx={}) {
+        this.__context.stack.push(ctx); //println(this.__context, "+CTX");
     }
 
     restoreContext() {
@@ -344,36 +386,13 @@ class Maple {
         return os;
     }
 
-    addSection(name, params, level=0) {
-        let type = SectionType.TEXT;
-        if(!name) {
-            name = type = SectionType.PART;
-        } else if("foreach" == name) {
-            name = type = SectionType.LOOP;
-        } else if("func" == name) {
-            name = type = SectionType.FUNC;
-        } else {
-            type = SectionType.NORM;
-        }
+    addSection(mexpr, level=0) {
+        let section = Section.fromMEXPR(this.seq++,mexpr, level);
+        this.sections.push(section);
+    }
 
-
-        this.currentSection = new Section(name, type, level);
-        this.currentSection.id = this.seq++;
-        this.currentSection.params = params;
-        this.sections.push(this.currentSection);
-
-        if(this.currentSection.isFunc()) {
-            let [fname,  ...params] = this.currentSection.params;
-            let section = this.currentSection;
-            this.addFunction(fname,(...args) => {
-                return section.apply(this, params, args);
-            }, "");
-        } else if(this.currentSection.isLoop()) {
-            let sep = params.length > 1 ? params[1] : null;
-            if(sep) {
-                this.currentSection.sep = sep;
-            }
-        }
+    _current() {
+        return _.last(this.sections);
     }
 
     addFunction(fname, f, module) {
@@ -388,24 +407,26 @@ class Maple {
     }
 
     addContent(content) {
-        this.currentSection.contents.push(content);
+        this._current().contents.push(content);
     }
 
     tree() {
-        this.root = mktree(this.sections, this.sections[0], "level", "sections");
-        //print(this.sections);
+        this.root = mcore.mktree(this.sections, this.sections[0], "level", "sections");
+        return this;
     }
-
 
     eval() {
         let rs = this.root.eval(this);
-        //let text = Maple.printrs(rs);
-        print(rs);
-        //console.log(Maple.printrs(rs));
-        //console.error(text);
+        print("==============================");
+        print(rs, "RS");
         return rs;
     }
 
+    showTime() {
+        this.sections.forEach((s) => {
+            console.log(`${s.id} : ${s.time}` );
+        });
+    }
 
     static printrs(xs) {
         return mcore.flat(xs).join("\n");
@@ -419,26 +440,19 @@ function run_maple(file) {
     readline(file, (line, num) => {
         if(line == null) {
             maple.tree();
-            maple.eval();
+            console.log(Maple.printrs(maple.eval()));
+            //maple.showTime();
             return;
         }
 
         let match;
         if(line.startsWith('#----')) {
-            if (match = /^#([-]{4,256})[|]\s[@]([a-z_A-Z][a-z_A-Z0-9]*)(.*)$/.exec(line)) {
-                let [ , level, name, params] = match;
-                maple.addSection(name.trim(), params.trim().split(/\s+/), level.length);
-            } else if (match = /^#([-]{4,256})([|])(.*)$/.exec(line)) {
-                let [ , level,  , expr] = match;
-                if(expr.startsWith('|')) {
-                    maple.addContent(`#${level}|${expr.slice(1)}`);
-                } else {
-                    maple.addSection("", [expr.trim()], level.length);
-                }
-            } else {
-                /* NOTHING */
+            match = /^#([-]{4,2048})[|][\s]*(.*)/.exec(line);
+            if (match) {
+                let [,level, mexpr] = match;
+                maple.addSection(mexpr, level.length);
+                return;
             }
-            return;
         }
         maple.addContent(line);
     });
@@ -449,18 +463,12 @@ function readline(file, cb) {
     require('readline').createInterface({
         input: require('fs').createReadStream(file)
     }).on('line', function (line) {
-        cb(line,num++);
-    }).on('close',() => {
-        cb(null,num++);
+        cb(line, num++);
+    }).on('close', () => {
+        cb(null, num++);
     });
 }
 
-
-//run_maple("maple/zsh.completion.mp");
-run_maple("maple/README.mp");
-// function reduceFunctions(fns=[], init) {
-//     return fns.reduce((r,e) => { return e(r); }, init);
-// }
-//
-// let r  = reduceFunctions([(e)=>{ return e.join('\n');}, (e)=>{ return e.toUpperCase(); }], ["aaaa", "bbbb", "cccc"]);
-// console.log(r);
+//run_maple("maple/orm.mp");
+run_maple("maple/test_yaml.mp");
+//console.log(mcore.mcall({a:1, b:2}, 'return a+b'));
