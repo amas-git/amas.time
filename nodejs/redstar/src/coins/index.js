@@ -1,9 +1,9 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
-const level = require('level-rocksdb');
+//const level = require('level-rocksdb');
 const _  = require('lodash');
 const moment = require('moment');
-const db = level('./coins');
+//const db = level('./coins');
 
 
 /***
@@ -125,11 +125,27 @@ async function getExchangeIds() {
     return xs;
 }
 
-async function bianance_act(url=``) {
+async function bianance_news(url=`https://support.binance.com/hc/api/internal/recent_activities/?locale=zh-cn&page=1`) {
     let {status, data} = await axios(url);
     if (status !== 200) {
         return null;
     }
+    let rs = [];
+    for(let a of data.activities) {
+        rs.push({time:a.timestamp, title:a.title, url:`https://support.binance.com${a.url}`});
+    }
+
+    console.log(rs);
+}
+
+async function huobi_news(url="https://www.huobi.com/zh-cn/notice/") {
+    let {status, data} = await axios(url);
+    if (status !== 200) {
+        return null;
+    }
+    let rs = [];
+
+    console.log(data);
 }
 
 async function fetch(fetchId, url) {
@@ -137,6 +153,33 @@ async function fetch(fetchId, url) {
     if (status !== 200) {
         return null;
     }
+}
+async function getBalanceLTC(addr='LMhBhJubcRn7Vm4SE2jYRKPRryERSaSfGP') {
+  let {status, data} = await axios.get(`http://explorer.litecoin.net/address/${addr}`);
+  let rs=[];
+  if(status !== 200) {
+    return [];
+  }
+  let $ = cheerio.load(data);
+  console.log(data);
+}
+
+async function checkUSDT_TX(tx  = ["e47625af44a3d2f48cc671801943874ba7f57cd8c16a5eeb2df10342550906c4"]) {
+
+    for(t of tx) {
+        let url = `https://www.omniexplorer.info/tx/${tx}`;
+        console.log(`${url}`);
+        try {
+            let {status, data} = await axios.get(url);
+            let rs = [];
+            if (status !== 200) {
+                return [];
+            }
+        } catch (e) {
+
+        }
+    }
+    console.log("%o", data);
 }
 
 (async () => {
@@ -146,11 +189,9 @@ async function fetch(fetchId, url) {
     //await db.put(`/id/test`, 1);
     //let x  = await db.get(`/id/test`);
     //print(x);
+    //await bianance_news();
+    //await huobi_news();
+    //await getBalanceLTC();
+    await checkUSDT_TX();
 })();
 
-
-const A_B = new Market('A','B');
-A_B.price = 552; // 2B = 1A
-
-print(A_B.buy(1));
-print(A_B.sell(14.299999999999999));
