@@ -23,7 +23,7 @@ async function save_peoples(data) {
 async function get_peoples() {
     let rs = await peoples.findAll({});
     for(let r of rs) {
-        console.log(JSON.stringify(r));
+        console.log(r.name);
     }
     return rs;
 }

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style type="text/css">
+        #hello {
+            color: crimson;
+            transform: rotate(45deg);
+        }
+        html {
+            background: bisque;
+        }
+
+        #nav {
+            position: relative;
+        }
+
+        #nav ul {
+            list-style: none;
+        }
+
+        #nav ul li {
+            float: left;
+            margin: 3px;
+            width: 80px;
+            line-height: 30px;
+            text-align: center;
+            background: aquamarine;
+        }
+
+        #parent1 {
+            width: 100%;
+            height: 100px;
+            background: #CCCCCC;
+            display: table;
+            padding: 5px;
+        }
+
+        .chi1 {
+            display: table-cell;
+            border-color: aquamarine;
+            border: 1px;
+            background: crimson;
+        }
+        #div2 {
+            background: aquamarine;
+        }
+
+        #float {
+            background: azure;
+            width: 300px;
+        }
+
+        #floatblock {
+            width: 100px;
+            height: 100px;
+            float: right;
+            margin: 5px;
+            background: darkorange;
+        }
+
+    </style>
+</head>
+<body>
+<div id="nav">
+    <ul>
+        <li><a href="#">Home</a></li>
+        <li><a href="#">About</a></li>
+        <li><a href="#">Contact</a></li>
+    </ul>
+</div>
+<div id="parent1" class="css2">
+<div id="div1" class="chi1"></div>
+<div id="div2" class="chi1"></div>
+<div id="div3" class="chi1"></div>
+</div>
+
+<div id="float">
+    <div id="floatblock"></div>
+    <h2>CSS1: USE FLOAT</h2>
+    <p>Block display means the element occupies horizontal and vertical space, with an
+        invisible bounding box enclosing it. Block elements displace other elements on the
+        page, causing them to shift position to accommodate the space of their bounding
+        box. Block-level elements always start in a new vertical space and occupy the full
+        width available, stretching as far as they can.</p>
+</div>
+</body>
+</html>

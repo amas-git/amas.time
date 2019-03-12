@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+
+<style>
+    html {
+        box-sizing: border-box
+    }
+    *, *::before, *::after {
+        box-sizing: inherit
+    }
+
+    #parent {
+        background: chocolate;
+        padding: 4%;
+        text-align: justify;
+    }
+
+    .child:nth-child(3n+1) {
+        background: crimson;
+    }
+
+    .child {
+        display: inline-block;
+        background: aliceblue;
+        border: 1px solid greenyellow;
+        width: 33%;
+        padding: 2%
+    }
+</style>
+
+<div id="parent">
+    <div class="child">ELEM1</div>
+    <div class="child">ELEM1</div>
+    <div class="child">ELEM1</div>
+    <div class="child">ELEM1</div>
+    <div class="child">ELEM1</div>
+    <div class="child">ELEM1</div>
+    <div class="child">ELEM1</div>
+    <div class="child">ELEM1</div>
+    <div class="child">ELEM1</div>
+</div>
+</body>
+</html>

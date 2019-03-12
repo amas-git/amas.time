@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<style>
+
+    html {
+        box-sizing: border-box
+    }
+    *, *::before, *::after {
+        box-sizing: inherit
+    }
+
+    input[type="text"] {
+        /* Flexibility */
+        box-sizing: border-box;
+        width: 100%;
+        /* Styling */
+        border: 2px;
+        border-radius: .25em;
+        outline: none;
+        display: table-cell;
+
+    }
+
+    .input_bg {
+        display: table;
+        height: 100px;
+        padding: 1em;
+        background: #CCCCCC;
+    }
+
+    #display {
+        background: cadetblue;
+        width: 200px;
+    }
+
+    .block,.inline,.inline-block {
+        background: crimson;
+        border: solid 1px #000000;
+        padding: .5em;
+    }
+
+    .block {
+        display: block;
+    }
+
+    .inline {
+        display: inline;
+    }
+
+    .inline-block {
+        display: inline-block;
+    }
+</style>
+<div class="input_bg">
+<input type="text">
+</div>
+
+
+<div id="display">
+    <div class="block">BLOCK</div>
+    <div class="block">BLOCK</div>
+    <div class="block">BLOCK</div>
+    <div class="inline-block">INLINE-BLOCK</div>
+    <div class="inline-block">INLINE-BLOCK</div>
+    <div class="inline-block">INLINE-BLOCK</div>
+    <div class="inline-block">INLINE-BLOCK</div>
+    <div class="block">BLOCK</div>
+    <div class="inline">BLOCK</div>
+    <div class="inline">BLOCK</div>
+    <div class="inline">BLOCK</div>
+    <div class="inline">BLOCK</div>
+    <div class="inline">BLOCK</div>
+    <div class="inline">BLOCK</div>
+    <div class="inline">BLOCK</div>
+    <div class="inline">BLOCK</div>
+    <div class="inline">BLOCK</div>
+    <div class="inline">BLOCK</div>
+    <div class="inline">BLOCK</div>
+    <div class="inline">BLOCK</div>
+    <div class="inline">BLOCK</div>
+    <div class="inline">BLOCK</div>
+    <div class="inline">BLOCK</div>
+    <div class="block">BLOCK</div>
+</div>
+</body>
+</html>
