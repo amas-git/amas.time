@@ -470,5 +470,5 @@ function readline(file, cb) {
 }
 
 //run_maple("maple/orm.mp");
-run_maple("maple/test_yaml.mp");
+run_maple("maple/ELK.mp");
 //console.log(mcore.mcall({a:1, b:2}, 'return a+b'));
